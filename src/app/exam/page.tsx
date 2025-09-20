@@ -29,6 +29,7 @@ import {
   SheetTrigger,
 } from "@/components/ui/sheet";
 import { PanelLeft } from "lucide-react";
+import FloatingCamera from "@/components/floating-camera";
 
 export default function ExamPage() {
   const router = useRouter();
@@ -86,8 +87,8 @@ export default function ExamPage() {
       <div className="flex flex-1 overflow-hidden">
         <main className="flex flex-1 flex-col p-4 md:p-6 lg:p-8">
           <div className="flex h-full flex-col">
-            <div className="p-6 rounded-xl border bg-card text-card-foreground shadow-lg mb-6 lg:hidden">
-              <ProctoringPanel />
+            <div className="lg:hidden">
+              <FloatingCamera />
             </div>
 
             <div className="flex h-full flex-col rounded-xl border bg-card text-card-foreground shadow-lg">
