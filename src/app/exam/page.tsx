@@ -28,6 +28,7 @@ import {
   SheetContent,
   SheetHeader,
   SheetTitle,
+  SheetTrigger,
 } from "@/components/ui/sheet";
 import { examData as staticExamData } from "@/lib/data";
 
@@ -111,7 +112,7 @@ export default function ExamPage() {
           </SheetTrigger>
           <SheetContent side="left" className="p-0 w-[350px] bg-background">
             <SheetHeader className="p-4 border-b">
-                <SheetTitle>Proctoring</SheetTitle>
+                <SheetTitle className="sr-only">Proctoring</SheetTitle>
             </SheetHeader>
             <ProctoringPanel violations={violations} setViolations={setViolations} />
           </SheetContent>
