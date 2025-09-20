@@ -57,7 +57,8 @@ export default function ChatTutor({ examContext }: ChatTutorProps) {
 
     } catch (error) {
       console.error(error);
-      setMessages(prev => [...prev, { role: 'model', content: "Sorry, I ran into a problem. Please try again." }]);
+      const errorMessage = error instanceof Error ? error.message : "An unknown error occurred.";
+      setMessages(prev => [...prev, { role: 'model', content: `Sorry, I ran into a problem: ${errorMessage}` }]);
     } finally {
       setIsLoading(false);
     }

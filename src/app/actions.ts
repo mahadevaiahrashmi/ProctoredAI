@@ -71,7 +71,10 @@ export async function clarifyDoubtAction(input: ClarifyExamDoubtsInput): Promise
         return result.response;
     } catch (error) {
         console.error("Error clarifying doubt:", error);
-        return "I'm sorry, I encountered an error while trying to respond. Please try asking again.";
+        if (error instanceof Error) {
+            throw new Error(`AI Tutor Error: ${error.message}`);
+        }
+        throw new Error("An unknown error occurred in the AI Tutor.");
     }
 }
 
