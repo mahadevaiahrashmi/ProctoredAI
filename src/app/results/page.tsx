@@ -204,8 +204,10 @@ function ResultsContent() {
                 </Accordion>
             </div>
 
-          {/* Proctoring Summary */}
-          {hasViolations && (
+        </CardContent>
+        {/* Proctoring Summary */}
+        {hasViolations && (
+           <CardContent className="px-8 pb-8">
              <Card className="bg-destructive/5 border-destructive/50">
                 <CardHeader>
                     <CardTitle className="flex items-center gap-3 text-destructive">
@@ -230,10 +232,9 @@ function ResultsContent() {
                     </ScrollArea>
                 </CardContent>
             </Card>
-          )}
-
-        </CardContent>
-        <CardFooter className="flex justify-center p-6 bg-card">
+           </CardContent>
+        )}
+        <CardFooter className="flex justify-center p-6 pt-0 bg-card">
           <Button asChild size="lg">
             <Link href="/">
               <Home className="mr-2 h-4 w-4" />
@@ -254,5 +255,3 @@ export default function ResultsPage() {
         </Suspense>
     )
 }
-
-    
