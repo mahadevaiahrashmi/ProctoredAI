@@ -21,7 +21,7 @@ import { Separator } from "./ui/separator";
 
 type ProctoringStatus = "secure" | "violation" | "initializing";
 
-const VIOLATION_CHECK_INTERVAL_MS = 8000; // Check for violations every 8 seconds
+const VIOLATION_CHECK_INTERVAL_MS = 1500; // Check for violations every 1.5 seconds
 
 interface ProctoringPanelProps {
     violations: string[];
