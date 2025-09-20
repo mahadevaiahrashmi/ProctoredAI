@@ -2,8 +2,9 @@
 
 import { detectExamViolations } from "@/ai/flows/detect-exam-violations";
 import { summarizeProctoringAlerts } from "@/ai/flows/summarize-proctoring-alerts";
-import { generateExamQuestions, type GenerateExamQuestionsOutput } from "@/ai/flows/generate-exam-questions";
+import { generateExamQuestions, type GenerateExamQuestionsOutput, type Question } from "@/ai/flows/generate-exam-questions";
 import { generateExamSessionPrompt } from "@/ai/flows/generate-exam-session-prompt";
+import { gradeExam, GradeExamOutput } from "@/ai/flows/grade-exam";
 
 export async function detectViolationsAction(imageDataUri: string) {
   try {
@@ -48,5 +49,15 @@ export async function generateExamAction(topic: string, studentName: string): Pr
     } catch (error) {
         console.error("Error generating exam:", error);
         throw new Error("Failed to generate exam. Please try again.");
+    }
+}
+
+export async function gradeExamAction(questions: Question[], userAnswers: Record<number, string | string[]>): Promise<GradeExamOutput> {
+    try {
+        const result = await gradeExam({ questions, userAnswers });
+        return result;
+    } catch (error) {
+        console.error("Error grading exam:", error);
+        throw new Error("Failed to grade exam.");
     }
 }

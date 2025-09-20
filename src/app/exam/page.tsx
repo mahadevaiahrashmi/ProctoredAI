@@ -1,10 +1,10 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { useRouter, useSearchParams } from "next/navigation";
+import { useRouter } from "next/navigation";
 import { ChevronLeft, ChevronRight, Send } from "lucide-react";
 
-import { type Question, examData as staticExamData } from "@/lib/data";
+import { type Question } from "@/ai/flows/generate-exam-questions";
 import { Button } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
 import ProctoringPanel from "@/components/proctoring-panel";
@@ -31,25 +31,22 @@ import {
 import { PanelLeft } from "lucide-react";
 import FloatingCamera from "@/components/floating-camera";
 import { Skeleton } from "@/components/ui/skeleton";
+import { examData as staticExamData } from "@/lib/data";
 
 export default function ExamPage() {
   const router = useRouter();
-  const searchParams = useSearchParams();
   const [examData, setExamData] = useState<{title: string, questions: Question[] } | null>(null);
   const [currentQuestionIndex, setCurrentQuestionIndex] = useState(0);
   const [answers, setAnswers] = useState<Record<number, string | string[]>>({});
   const [violations, setViolations] = useState<string[]>([]);
   
   useEffect(() => {
-    // This is a temporary solution to get exam data.
-    // In a real app, you would fetch this from a server or pass it via props.
     try {
       const examDataString = sessionStorage.getItem('examData');
       if (examDataString) {
         const parsedData = JSON.parse(examDataString);
         setExamData(parsedData);
       } else {
-        // Fallback to static data if nothing in session storage
         setExamData(staticExamData);
       }
     } catch (error) {
@@ -88,10 +85,14 @@ export default function ExamPage() {
   };
 
   const handleSubmit = () => {
-    console.log("Submitting answers:", answers);
-    const params = new URLSearchParams();
-    violations.forEach(v => params.append('violations', v));
-    router.push(`/results?${params.toString()}`);
+    // Store results in session storage to pass to the results page
+    sessionStorage.setItem('examResults', JSON.stringify({
+      questions: examData.questions,
+      answers: answers,
+      violations: violations,
+      title: examData.title,
+    }));
+    router.push(`/results`);
   };
 
   return (
@@ -109,8 +110,8 @@ export default function ExamPage() {
             </Button>
           </SheetTrigger>
           <SheetContent side="left" className="p-0 w-[350px] bg-background">
-            <SheetHeader className="p-4">
-              <SheetTitle className="sr-only">Proctoring Panel</SheetTitle>
+             <SheetHeader className="p-4 border-b">
+                <SheetTitle className="text-lg">Proctoring</SheetTitle>
             </SheetHeader>
             <ProctoringPanel violations={violations} setViolations={setViolations} />
           </SheetContent>

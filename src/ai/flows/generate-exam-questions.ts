@@ -36,6 +36,11 @@ const QuestionSchema = z.object({
     .describe(
       'An array of possible answers for multiple-choice questions.'
     ),
+  answer: z
+    .string()
+    .describe(
+      'The correct answer for the question. For multiple-choice questions, this is one of the options. For text questions, this is a model answer.'
+    ),
 });
 export type Question = z.infer<typeof QuestionSchema>;
 
@@ -64,6 +69,8 @@ const prompt = ai.definePrompt({
 The exam should have a creative title and exactly {{numberOfQuestions}} questions.
 
 Ensure the questions include a mix of "multiple-choice" and "text" (open-ended) types. For multiple-choice questions, provide exactly 4 options, one of which must be the correct answer. The IDs for the questions should be unique sequential numbers starting from 1.
+
+For each question, you MUST provide the correct answer in the 'answer' field. For text questions, provide a model answer that would be considered correct.
 
 Topic: {{topic}}
 Number of Questions: {{numberOfQuestions}}`,
