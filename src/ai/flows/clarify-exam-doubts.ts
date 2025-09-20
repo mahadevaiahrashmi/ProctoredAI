@@ -100,10 +100,10 @@ You have been provided with the full context of the exam: the questions, the stu
 
 *   **Questions, Answers, and Feedback:**
     {{#each questions}}
-    - **Question {{id}}:** {{text}}
-      - **Correct Answer:** {{answer}}
-      - **Student's Answer:** {{lookup ../userAnswers id}}
-      - **AI Feedback:** {{lookup (lookup ../gradingReport.gradedQuestions "questionId" id) "feedback"}}
+    - **Question {{this.id}}:** {{this.text}}
+      - **Correct Answer:** {{this.answer}}
+      - **Student's Answer:** {{lookup ../userAnswers this.id}}
+      - **AI Feedback:** {{lookup (lookup ../gradingReport.gradedQuestions "questionId" this.id) "feedback"}}
     {{/each}}
 
 **Conversation History:**
@@ -125,7 +125,55 @@ const clarifyExamDoubtsFlow = ai.defineFlow(
     outputSchema: ClarifyExamDoubtsOutputSchema,
   },
   async input => {
-    const {output} = await prompt(input);
-    return output!;
+    // Manually construct the student answers part of the prompt
+    const questionsWithAnswers = input.questions.map(q => {
+        const userAnswer = input.userAnswers[q.id] || "Not Answered";
+        const gradedQuestion = input.gradingReport.gradedQuestions.find(gq => gq.questionId === q.id);
+        const feedback = gradedQuestion ? gradedQuestion.feedback : "N/A";
+        return `
+- **Question ${q.id}:** ${q.text}
+  - **Correct Answer:** ${q.answer}
+  - **Student's Answer:** ${Array.isArray(userAnswer) ? userAnswer.join(', ') : userAnswer}
+  - **AI Feedback:** ${feedback}
+        `;
+    }).join('');
+
+    const customPrompt = `You are a friendly and encouraging AI teaching assistant. Your goal is to help a student understand their exam results and clarify any doubts they have.
+
+You have been provided with the full context of the exam: the questions, the student's answers, the correct answers, and a detailed performance report.
+
+**Your instructions are:**
+1.  **Be Conversational and Supportive:** Use a positive and encouraging tone.
+2.  **Use the Provided Context:** Base your answers ONLY on the exam data provided below. Do not invent information or answer questions about topics outside of this exam.
+3.  **Explain Concepts Clearly:** When a student asks about a specific question, explain why their answer was right or wrong, and clarify the underlying concept using the provided correct answer and feedback.
+4.  **Maintain Conversation History:** Use the provided chat history to understand the flow of the conversation and provide relevant follow-up responses.
+5.  **Decline Irrelevant Questions:** If the student asks something unrelated to their exam performance or the subject matter, politely decline and steer the conversation back to the exam. For example: "My purpose is to help you with your exam results. I can't answer questions about other topics, but I'd be happy to go over another question with you."
+
+**Exam Context:**
+
+*   **Exam Title:** ${input.examTitle}
+*   **Performance Report:** ${input.gradingReport.summaryReport}
+*   **Overall Score:** ${input.gradingReport.overallScore}%
+
+*   **Questions, Answers, and Feedback:**
+    ${questionsWithAnswers}
+
+**Conversation History:**
+${input.chatHistory.map(m => `- **${m.role}**: ${m.content}`).join('\n')}
+
+**New User Question:**
+- **user:** ${input.userQuery}
+
+Based on all of this context, provide a helpful and relevant response to the user's question.`;
+
+
+    const {output} = await ai.generate({
+        prompt: customPrompt,
+        output: {
+            schema: ClarifyExamDoubtsOutputSchema,
+        }
+    });
+
+    return output;
   }
 );
