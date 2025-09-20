@@ -17,6 +17,7 @@ import {
 import { Badge } from "@/components/ui/badge";
 import { detectViolationsAction } from "@/app/actions";
 import { ScrollArea } from "./ui/scroll-area";
+import { Separator } from "./ui/separator";
 
 type ProctoringStatus = "secure" | "violation" | "initializing";
 
@@ -109,13 +110,32 @@ export default function ProctoringPanel() {
     status === "secure" ? "text-green-500" : "text-destructive";
 
   return (
-    <Card className="flex h-full flex-col">
-      <CardHeader>
-        <CardTitle className="flex items-center justify-between">
-          <span>Proctoring Status</span>
-          {isProcessing && <Loader2 className="h-5 w-5 animate-spin" />}
+    <div className="flex h-full flex-col">
+      <div className="p-4">
+        <div className="relative aspect-video w-full overflow-hidden rounded-md border bg-muted">
+            <video
+                ref={videoRef}
+                autoPlay
+                playsInline
+                muted
+                className="h-full w-full object-cover"
+            />
+            <div className="absolute bottom-2 left-2">
+                <Badge variant="secondary">
+                    <Video className="mr-1.5 h-3 w-3" />
+                    Your Camera
+                </Badge>
+            </div>
+            <canvas ref={canvasRef} className="hidden" />
+        </div>
+      </div>
+      <Separator />
+      <div className="p-4">
+        <CardTitle className="flex items-center justify-between text-lg">
+            <span>Proctoring Status</span>
+            {isProcessing && <Loader2 className="h-5 w-5 animate-spin" />}
         </CardTitle>
-        <CardDescription className="flex items-center gap-2">
+        <CardDescription className="flex items-center gap-2 mt-1">
             <StatusIcon className={`h-5 w-5 ${statusColor}`} />
             <span className={`font-semibold ${statusColor}`}>
                 {status === 'secure' && 'System Secure'}
@@ -123,29 +143,13 @@ export default function ProctoringPanel() {
                 {status === 'initializing' && 'Initializing...'}
             </span>
         </CardDescription>
-      </CardHeader>
-      <CardContent className="flex flex-1 flex-col gap-4 overflow-hidden">
-        <div className="relative aspect-video w-full overflow-hidden rounded-md border bg-muted">
-          <video
-            ref={videoRef}
-            autoPlay
-            playsInline
-            muted
-            className="h-full w-full object-cover"
-          />
-          <div className="absolute bottom-2 left-2">
-            <Badge variant="secondary">
-                <Video className="mr-1.5 h-3 w-3" />
-                Your Camera
-            </Badge>
-          </div>
-          <canvas ref={canvasRef} className="hidden" />
-        </div>
-        <div className="flex-1 overflow-hidden">
-            <h3 className="mb-2 font-semibold">Violation Log</h3>
-            <ScrollArea className="h-full rounded-md border p-2">
+      </div>
+      <Separator />
+      <div className="flex-1 overflow-hidden p-4">
+            <h3 className="mb-2 font-semibold text-lg">Violation Log</h3>
+            <ScrollArea className="h-full rounded-md border p-2 bg-muted/50">
             {violations.length > 0 ? (
-                <ul className="space-y-2 text-sm">
+                <ul className="space-y-2 text-sm p-2">
                 {violations.map((violation, index) => (
                     <li key={index} className="text-destructive flex gap-2">
                       <AlertTriangle className="h-4 w-4 shrink-0 mt-0.5" />
@@ -160,7 +164,6 @@ export default function ProctoringPanel() {
             )}
             </ScrollArea>
         </div>
-      </CardContent>
-    </Card>
+    </div>
   );
 }
