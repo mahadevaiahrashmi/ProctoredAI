@@ -103,7 +103,7 @@ You have been provided with the full context of the exam: the questions, the stu
     - **Question {{id}}:** {{text}}
       - **Correct Answer:** {{answer}}
       - **Student's Answer:** {{lookup ../userAnswers id}}
-      - **AI Feedback:** {{lookup ../gradingReport.gradedQuestions "questionId" id "feedback"}}
+      - **AI Feedback:** {{lookup (lookup ../gradingReport.gradedQuestions "questionId" id) "feedback"}}
     {{/each}}
 
 **Conversation History:**
