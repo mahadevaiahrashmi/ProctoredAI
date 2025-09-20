@@ -1,4 +1,15 @@
-export const examData = {
+// This file now serves as a fallback or for default data.
+// The primary exam generation is now handled by AI.
+
+export interface Question {
+  id: number;
+  type: "multiple-choice" | "text";
+  text: string;
+  options?: string[];
+}
+
+
+export const examData: { title: string; questions: Question[] } = {
   title: "Introduction to Quantum Physics",
   questions: [
     {

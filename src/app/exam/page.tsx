@@ -1,10 +1,10 @@
 "use client";
 
-import { useState } from "react";
-import { useRouter } from "next/navigation";
+import { useState, useEffect } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
 import { ChevronLeft, ChevronRight, Send } from "lucide-react";
 
-import { examData } from "@/lib/data";
+import { type Question, examData as staticExamData } from "@/lib/data";
 import { Button } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
 import ProctoringPanel from "@/components/proctoring-panel";
@@ -30,12 +30,42 @@ import {
 } from "@/components/ui/sheet";
 import { PanelLeft } from "lucide-react";
 import FloatingCamera from "@/components/floating-camera";
+import { Skeleton } from "@/components/ui/skeleton";
 
 export default function ExamPage() {
   const router = useRouter();
+  const searchParams = useSearchParams();
+  const [examData, setExamData] = useState<{title: string, questions: Question[] } | null>(null);
   const [currentQuestionIndex, setCurrentQuestionIndex] = useState(0);
   const [answers, setAnswers] = useState<Record<number, string | string[]>>({});
   const [violations, setViolations] = useState<string[]>([]);
+  
+  useEffect(() => {
+    // This is a temporary solution to get exam data.
+    // In a real app, you would fetch this from a server or pass it via props.
+    try {
+      const examDataString = sessionStorage.getItem('examData');
+      if (examDataString) {
+        const parsedData = JSON.parse(examDataString);
+        setExamData(parsedData);
+      } else {
+        // Fallback to static data if nothing in session storage
+        setExamData(staticExamData);
+      }
+    } catch (error) {
+      console.error("Failed to parse exam data from sessionStorage", error);
+      setExamData(staticExamData);
+    }
+  }, []);
+
+  if (!examData) {
+     return (
+      <div className="flex h-full min-h-screen flex-col bg-background p-8">
+        <Skeleton className="h-16 w-full mb-4" />
+        <Skeleton className="h-[calc(100vh-12rem)] w-full" />
+      </div>
+    );
+  }
 
   const totalQuestions = examData.questions.length;
   const progress = ((currentQuestionIndex + 1) / totalQuestions) * 100;
@@ -58,7 +88,6 @@ export default function ExamPage() {
   };
 
   const handleSubmit = () => {
-    // In a real app, you would save the answers to a database.
     console.log("Submitting answers:", answers);
     const params = new URLSearchParams();
     violations.forEach(v => params.append('violations', v));

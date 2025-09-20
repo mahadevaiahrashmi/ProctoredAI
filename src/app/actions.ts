@@ -2,6 +2,8 @@
 
 import { detectExamViolations } from "@/ai/flows/detect-exam-violations";
 import { summarizeProctoringAlerts } from "@/ai/flows/summarize-proctoring-alerts";
+import { generateExamQuestions, type GenerateExamQuestionsOutput } from "@/ai/flows/generate-exam-questions";
+import { generateExamSessionPrompt } from "@/ai/flows/generate-exam-session-prompt";
 
 export async function detectViolationsAction(imageDataUri: string) {
   try {
@@ -27,5 +29,24 @@ export async function summarizeAlertsAction(alerts: string[]) {
     } catch (error) {
         console.error("Error summarizing alerts:", error);
         return "Could not generate summary.";
+    }
+}
+
+
+export async function generateExamAction(topic: string, studentName: string): Promise<{examData: GenerateExamQuestionsOutput; sessionPrompt: string}> {
+    try {
+        const [examData, sessionPromptResult] = await Promise.all([
+             generateExamQuestions({ topic, numberOfQuestions: 5 }),
+             generateExamSessionPrompt({ studentName, examName: topic })
+        ]);
+
+        return {
+            examData,
+            sessionPrompt: sessionPromptResult.sessionStartPrompt
+        };
+
+    } catch (error) {
+        console.error("Error generating exam:", error);
+        throw new Error("Failed to generate exam. Please try again.");
     }
 }

@@ -10,6 +10,8 @@ import {
   XCircle,
   Loader2,
   ChevronRight,
+  FileText,
+  User,
 } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
@@ -21,9 +23,11 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
-import { generateExamSessionPrompt } from "@/ai/flows/generate-exam-session-prompt";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
+import { generateExamAction } from "./actions";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 
 type PermissionState = "prompt" | "granted" | "denied";
 
@@ -31,32 +35,41 @@ export default function ExamInitiationPage() {
   const router = useRouter();
   const [step, setStep] = useState(0);
   const [sessionPrompt, setSessionPrompt] = useState("");
-  const [loadingPrompt, setLoadingPrompt] = useState(true);
+  const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  const [studentName, setStudentName] = useState("");
+  const [examTopic, setExamTopic] = useState("Quantum Physics");
 
   const [cameraPermission, setCameraPermission] =
     useState<PermissionState>("prompt");
   const [micPermission, setMicPermission] =
     useState<PermissionState>("prompt");
 
-  useEffect(() => {
-    async function getSessionPrompt() {
-      try {
-        setLoadingPrompt(true);
-        const { sessionStartPrompt } = await generateExamSessionPrompt({
-          studentName: "Alex Doe",
-          examName: "Introduction to Quantum Physics",
-        });
-        setSessionPrompt(sessionStartPrompt);
-      } catch (e) {
-        setError("Failed to load exam instructions. Please try again later.");
-        console.error(e);
-      } finally {
-        setLoadingPrompt(false);
-      }
+  const handleGenerateExam = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!studentName || !examTopic) {
+      setError("Please enter both your name and an exam topic.");
+      return;
     }
-    getSessionPrompt();
-  }, []);
+    setError(null);
+    setLoading(true);
+    try {
+      const { examData, sessionPrompt } = await generateExamAction(
+        examTopic,
+        studentName
+      );
+      sessionStorage.setItem("examData", JSON.stringify(examData));
+      setSessionPrompt(sessionPrompt);
+      setStep(1);
+    } catch (e) {
+      setError("Failed to generate exam. Please try a different topic or try again later.");
+      console.error(e);
+    } finally {
+      setLoading(false);
+    }
+  };
+
 
   const requestPermissions = useCallback(async () => {
     try {
@@ -66,12 +79,9 @@ export default function ExamInitiationPage() {
       });
       setCameraPermission("granted");
       setMicPermission("granted");
-      // Stop tracks immediately as we only needed to check for permission
       stream.getTracks().forEach((track) => track.stop());
     } catch (err) {
       console.error("Permission denied:", err);
-      // Heuristic to guess which permission was denied.
-      // This isn't foolproof but works for many cases.
       if (err instanceof DOMException) {
         if (err.name === "NotAllowedError" || err.name === "PermissionDeniedError") {
           setCameraPermission("denied");
@@ -82,7 +92,7 @@ export default function ExamInitiationPage() {
   }, []);
 
   useEffect(() => {
-    if (step === 1) {
+    if (step === 2) {
       requestPermissions();
     }
   }, [step, requestPermissions]);
@@ -114,9 +124,34 @@ export default function ExamInitiationPage() {
             )}
 
             {step === 0 && (
+                <form onSubmit={handleGenerateExam} className="space-y-4">
+                     <div className="space-y-2">
+                        <Label htmlFor="student-name" className="flex items-center gap-2"><User /> Your Name</Label>
+                        <Input 
+                            id="student-name"
+                            value={studentName}
+                            onChange={e => setStudentName(e.target.value)}
+                            placeholder="e.g. Alex Doe"
+                            required
+                        />
+                     </div>
+                     <div className="space-y-2">
+                        <Label htmlFor="exam-topic" className="flex items-center gap-2"><FileText /> Exam Topic</Label>
+                        <Input 
+                            id="exam-topic"
+                            value={examTopic}
+                            onChange={e => setExamTopic(e.target.value)}
+                            placeholder="e.g. Quantum Physics, World History"
+                            required
+                        />
+                     </div>
+                </form>
+            )}
+
+            {step === 1 && (
               <div className="space-y-4 rounded-lg border bg-secondary/50 p-4">
                 <h3 className="font-semibold text-lg text-center">Instructions</h3>
-                {loadingPrompt ? (
+                {loading ? (
                   <div className="space-y-2">
                     <Skeleton className="h-4 w-full" />
                     <Skeleton className="h-4 w-full" />
@@ -130,7 +165,7 @@ export default function ExamInitiationPage() {
               </div>
             )}
 
-            {step === 1 && (
+            {step === 2 && (
               <div className="space-y-4">
                 <h3 className="font-semibold text-lg text-center">System Check</h3>
                 <p className="text-muted-foreground text-center">
@@ -169,13 +204,31 @@ export default function ExamInitiationPage() {
           </CardContent>
           <CardFooter>
             {step === 0 && (
+                <Button
+                size="lg"
+                className="w-full"
+                type="submit"
+                form="exam-generation-form"
+                onClick={handleGenerateExam}
+                disabled={loading || !studentName || !examTopic}
+              >
+                {loading ? (
+                  <Loader2 className="animate-spin" />
+                ) : (
+                  <>
+                    Generate Exam & Proceed <ChevronRight />
+                  </>
+                )}
+              </Button>
+            )}
+            {step === 1 && (
               <Button
                 size="lg"
                 className="w-full"
-                onClick={() => setStep(1)}
-                disabled={loadingPrompt || !!error}
+                onClick={() => setStep(2)}
+                disabled={loading || !!error}
               >
-                {loadingPrompt ? (
+                {loading ? (
                   <Loader2 className="animate-spin" />
                 ) : (
                   <>
@@ -184,7 +237,7 @@ export default function ExamInitiationPage() {
                 )}
               </Button>
             )}
-            {step === 1 && (
+            {step === 2 && (
               <Button
                 size="lg"
                 className="w-full"

@@ -9,13 +9,8 @@ import {
 import { Label } from "@/components/ui/label";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Textarea } from "@/components/ui/textarea";
+import type { Question } from "@/lib/data";
 
-interface Question {
-  id: number;
-  type: "multiple-choice" | "text";
-  text: string;
-  options?: string[];
-}
 
 interface QuestionDisplayProps {
   question: Question;
