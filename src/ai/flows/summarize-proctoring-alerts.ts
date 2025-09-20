@@ -39,11 +39,12 @@ const prompt = ai.definePrompt({
   output: {schema: SummarizeProctoringAlertsOutputSchema},
   prompt: `You are an AI assistant that summarizes proctoring alerts during an exam.
 
-  Summarize the following alerts into a short, concise report for the administrator:
+  Based on the list of alerts provided, generate a 1-2 sentence summary that gives an overview of the student's conduct. Mention the types of violations and their frequency. For example: "Multiple potential violations were detected, including the presence of a phone and the student frequently looking away from the screen." If no alerts are present, state that the session was clean.
 
-  {%#each alerts %}
+  Alerts:
+  {{#each alerts}}
   - {{this}}
-  {%/each %}
+  {{/each}}
   `,
 });
 
@@ -54,7 +55,13 @@ const summarizeProctoringAlertsFlow = ai.defineFlow(
     outputSchema: SummarizeProctoringAlertsOutputSchema,
   },
   async input => {
+    // If there are no alerts, return a clean summary without calling the AI
+    if (input.alerts.length === 0) {
+      return { summary: "No proctoring violations were detected during the exam session." };
+    }
     const {output} = await prompt(input);
     return output!;
   }
 );
+
+    

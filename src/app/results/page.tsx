@@ -13,7 +13,7 @@ import {
   CardTitle,
 } from '@/components/ui/card';
 import { ScrollArea } from '@/components/ui/scroll-area';
-import { gradeExamAction } from '@/app/actions';
+import { gradeExamAction, summarizeAlertsAction } from '@/app/actions';
 import { type GradeExamOutput } from '@/ai/flows/grade-exam';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
@@ -26,6 +26,7 @@ function ResultsContent() {
     title: string;
   } | null>(null);
   const [gradingReport, setGradingReport] = useState<GradeExamOutput | null>(null);
+  const [violationSummary, setViolationSummary] = useState<string>("");
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -49,12 +50,19 @@ function ResultsContent() {
   useEffect(() => {
     if (!examResults) return;
 
-    async function getGradeReport() {
+    async function getReports() {
       try {
         setLoading(true);
         setError(null);
-        const report = await gradeExamAction(examResults.questions, examResults.answers);
+        
+        const [report, summary] = await Promise.all([
+          gradeExamAction(examResults.questions, examResults.answers),
+          summarizeAlertsAction(examResults.violations)
+        ]);
+        
         setGradingReport(report);
+        setViolationSummary(summary);
+
       } catch (e) {
         console.error(e);
         setError("An error occurred while generating your performance report.");
@@ -63,7 +71,7 @@ function ResultsContent() {
       }
     }
 
-    getGradeReport();
+    getReports();
   }, [examResults]);
 
   const hasViolations = examResults?.violations && examResults.violations.length > 0;
@@ -198,19 +206,30 @@ function ResultsContent() {
 
           {/* Proctoring Summary */}
           {hasViolations && (
-            <div className="space-y-4">
-              <h3 className="font-bold text-xl flex items-center gap-2 text-destructive"><AlertTriangle /> Proctoring Violations</h3>
-              <ScrollArea className="h-48 w-full rounded-md border bg-destructive/5 p-2">
-                <ul className="p-4 text-sm">
-                  {examResults.violations.map((violation, index) => (
-                    <li key={index} className="flex items-start gap-3 py-2 border-b border-destructive/20 last:border-b-0">
-                      <AlertTriangle className="h-4 w-4 text-destructive mt-1 shrink-0" />
-                      <span className="text-destructive">{violation}</span>
-                    </li>
-                  ))}
-                </ul>
-              </ScrollArea>
-            </div>
+             <Card className="bg-destructive/5 border-destructive/50">
+                <CardHeader>
+                    <CardTitle className="flex items-center gap-3 text-destructive">
+                        <AlertTriangle />
+                        Proctoring Violation Report
+                    </CardTitle>
+                    <CardDescription className="text-destructive/90 pt-2">
+                        {violationSummary}
+                    </CardDescription>
+                </CardHeader>
+                <CardContent>
+                    <h4 className="font-semibold mb-2">Detailed Log:</h4>
+                    <ScrollArea className="h-40 w-full rounded-md border bg-background p-2">
+                        <ul className="p-2 text-sm text-destructive/90">
+                        {examResults.violations.map((violation, index) => (
+                            <li key={index} className="flex items-start gap-2 py-1.5 border-b border-destructive/10 last:border-b-0">
+                                <AlertTriangle className="h-4 w-4 shrink-0 mt-0.5" />
+                                <span>{violation}</span>
+                            </li>
+                        ))}
+                        </ul>
+                    </ScrollArea>
+                </CardContent>
+            </Card>
           )}
 
         </CardContent>
@@ -235,3 +254,5 @@ export default function ResultsPage() {
         </Suspense>
     )
 }
+
+    
