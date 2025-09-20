@@ -82,7 +82,7 @@ Based on this evaluation, perform the following tasks:
 
 Here is the exam data:
 
-**Questions & Correct Answers:**
+**Questions, Correct Answers, and Student Answers:**
 {{#each questions}}
 - **ID: {{id}}**
   - **Question:** {{text}}
@@ -91,12 +91,7 @@ Here is the exam data:
   - **Options:** {{#each options}}- {{this}} {{/each}}
   {{/if}}
   - **Correct Answer:** {{answer}}
-{{/each}}
-
-**Student's Answers:**
-{{#each (keys userAnswers)}}
-- **Question ID: {{this}}**
-  - **Answer:** {{lookup ../userAnswers this}}
+  - **Student's Answer:** {{lookup ../userAnswers id}}
 {{/each}}
 `,
 });
