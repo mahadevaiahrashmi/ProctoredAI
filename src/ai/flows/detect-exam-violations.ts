@@ -41,12 +41,12 @@ const detectExamViolationsPrompt = ai.definePrompt({
   output: {schema: DetectExamViolationsOutputSchema},
   prompt: `You are an AI proctoring system analyzing a video feed for exam violations.
 
-  Analyze the provided video feed and identify any potential violations of exam rules, such as:
-
-  - Unauthorized applications running on the computer
-  - The examinee looking away from the screen for extended periods
-  - The presence of other people in the room
-  - Suspicious eye movements
+  Analyze the provided video feed and identify any potential violations of exam rules. Specifically, look for:
+  - More than one face in the video. If so, include "Multiple faces detected." in the violations list.
+  - The presence of a phone. If so, include "Phone detected." in the violations list.
+  - The examinee looking away from the screen for extended periods.
+  - The presence of other people in the room.
+  - Suspicious eye movements.
 
   Provide a list of any violations detected. If no violations are detected, return an empty list.
 
