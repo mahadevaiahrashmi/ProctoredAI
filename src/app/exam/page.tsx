@@ -35,6 +35,7 @@ export default function ExamPage() {
   const router = useRouter();
   const [currentQuestionIndex, setCurrentQuestionIndex] = useState(0);
   const [answers, setAnswers] = useState<Record<number, string | string[]>>({});
+  const [violations, setViolations] = useState<string[]>([]);
 
   const totalQuestions = examData.questions.length;
   const progress = ((currentQuestionIndex + 1) / totalQuestions) * 100;
@@ -59,7 +60,9 @@ export default function ExamPage() {
   const handleSubmit = () => {
     // In a real app, you would save the answers to a database.
     console.log("Submitting answers:", answers);
-    router.push("/submitted");
+    const params = new URLSearchParams();
+    violations.forEach(v => params.append('violations', v));
+    router.push(`/results?${params.toString()}`);
   };
 
   return (
@@ -77,10 +80,7 @@ export default function ExamPage() {
             </Button>
           </SheetTrigger>
           <SheetContent side="left" className="p-0 w-[350px] bg-background">
-            <SheetHeader>
-              <SheetTitle className="sr-only">Proctoring Panel</SheetTitle>
-            </SheetHeader>
-            <ProctoringPanel />
+            <ProctoringPanel violations={violations} setViolations={setViolations} />
           </SheetContent>
         </Sheet>
       </ExamHeader>
@@ -151,7 +151,7 @@ export default function ExamPage() {
           </div>
         </main>
         <aside className="hidden w-[400px] flex-col border-l bg-card p-4 lg:flex">
-          <ProctoringPanel />
+          <ProctoringPanel violations={violations} setViolations={setViolations} />
         </aside>
       </div>
     </div>

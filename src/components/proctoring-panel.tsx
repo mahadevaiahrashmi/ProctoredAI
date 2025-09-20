@@ -23,11 +23,15 @@ type ProctoringStatus = "secure" | "violation" | "initializing";
 
 const VIOLATION_CHECK_INTERVAL_MS = 8000; // Check for violations every 8 seconds
 
-export default function ProctoringPanel() {
+interface ProctoringPanelProps {
+    violations: string[];
+    setViolations: React.Dispatch<React.SetStateAction<string[]>>;
+}
+
+export default function ProctoringPanel({ violations, setViolations }: ProctoringPanelProps) {
   const videoRef = useRef<HTMLVideoElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const [status, setStatus] = useState<ProctoringStatus>("initializing");
-  const [violations, setViolations] = useState<string[]>([]);
   const [isProcessing, setIsProcessing] = useState(false);
   const intervalIdRef = useRef<NodeJS.Timeout | null>(null);
 
@@ -55,10 +59,6 @@ export default function ProctoringPanel() {
             ...newViolations.map((v) => `${timestamp}: ${v}`),
           ]);
           setStatus("violation");
-        } else {
-           // If no new violations, and there were previous violations, we can keep the status as violation. 
-           // If you want it to return to secure, uncomment the next line.
-           // if (violations.length === 0) setStatus("secure");
         }
       } catch (error) {
         console.error("Failed to check for violations", error);
@@ -68,7 +68,7 @@ export default function ProctoringPanel() {
     } else {
         setIsProcessing(false);
     }
-  }, [isProcessing]);
+  }, [isProcessing, setViolations]);
 
 
   useEffect(() => {
@@ -90,7 +90,7 @@ export default function ProctoringPanel() {
     }
 
     setupCamera();
-  }, []);
+  }, [setViolations]);
 
   useEffect(() => {
     if (status !== 'initializing') {
@@ -105,9 +105,9 @@ export default function ProctoringPanel() {
 
 
   const StatusIcon =
-    status === "secure" ? ShieldCheck : AlertTriangle;
+    status === "secure" && violations.length === 0 ? ShieldCheck : AlertTriangle;
   const statusColor =
-    status === "secure" ? "text-green-500" : "text-destructive";
+    status === "secure" && violations.length === 0 ? "text-green-500" : "text-destructive";
 
   return (
     <div className="flex h-full flex-col">
@@ -138,8 +138,8 @@ export default function ProctoringPanel() {
         <CardDescription className="flex items-center gap-2 mt-1">
             <StatusIcon className={`h-5 w-5 ${statusColor}`} />
             <span className={`font-semibold ${statusColor}`}>
-                {status === 'secure' && 'System Secure'}
-                {status === 'violation' && 'Potential Violation Detected'}
+                {status === 'secure' && violations.length === 0 && 'System Secure'}
+                {(status === 'violation' || violations.length > 0) && 'Potential Violation Detected'}
                 {status === 'initializing' && 'Initializing...'}
             </span>
         </CardDescription>
