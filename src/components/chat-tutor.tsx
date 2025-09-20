@@ -5,8 +5,8 @@ import { Send, User, Bot, Loader2 } from "lucide-react";
 import { Button } from "./ui/button";
 import { Input } from "./ui/input";
 import { ScrollArea } from "./ui/scroll-area";
-import { Avatar, AvatarFallback, AvatarImage } from "./ui/avatar";
-import { clarifyDoubtAction } from "@/app/actions";
+import { Avatar, AvatarFallback } from "./ui/avatar";
+import { clarifyDoubtAction, textToSpeechAction } from "@/app/actions";
 import { type ClarifyExamDoubtsInput } from "@/ai/flows/clarify-exam-doubts";
 import { cn } from "@/lib/utils";
 
@@ -23,7 +23,10 @@ export default function ChatTutor({ examContext }: ChatTutorProps) {
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [input, setInput] = useState("");
   const [isLoading, setIsLoading] = useState(false);
+  const [isSpeaking, setIsSpeaking] = useState(false);
   const scrollAreaRef = useRef<HTMLDivElement>(null);
+  const audioRef = useRef<HTMLAudioElement | null>(null);
+
 
   const handleSendMessage = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -42,6 +45,16 @@ export default function ChatTutor({ examContext }: ChatTutorProps) {
       });
 
       setMessages(prev => [...prev, { role: 'model', content: response }]);
+      
+      // Convert response to speech
+      const audioDataUri = await textToSpeechAction(response);
+      if (audioDataUri) {
+        if (audioRef.current) {
+          audioRef.current.src = audioDataUri;
+          audioRef.current.play().catch(console.error);
+        }
+      }
+
     } catch (error) {
       console.error(error);
       setMessages(prev => [...prev, { role: 'model', content: "Sorry, I ran into a problem. Please try again." }]);
@@ -62,6 +75,25 @@ export default function ChatTutor({ examContext }: ChatTutorProps) {
     }
   }, [messages]);
 
+  // Effect to manage audio playback events
+  useEffect(() => {
+    const audio = new Audio();
+    audioRef.current = audio;
+
+    const handlePlay = () => setIsSpeaking(true);
+    const handleEnded = () => setIsSpeaking(false);
+
+    audio.addEventListener('play', handlePlay);
+    audio.addEventListener('pause', handleEnded);
+    audio.addEventListener('ended', handleEnded);
+    
+    return () => {
+      audio.removeEventListener('play', handlePlay);
+      audio.removeEventListener('pause', handleEnded);
+      audio.removeEventListener('ended', handleEnded);
+    };
+  }, []);
+
   return (
     <div className="flex flex-col h-[500px] w-full border rounded-lg bg-background">
       <ScrollArea className="flex-1 p-4" ref={scrollAreaRef}>
@@ -80,7 +112,7 @@ export default function ChatTutor({ examContext }: ChatTutorProps) {
               )}
             >
               {message.role === 'model' && (
-                <Avatar className="w-8 h-8 border">
+                <Avatar className={cn("w-8 h-8 border", isSpeaking && "animate-pulse ring-2 ring-primary ring-offset-2 ring-offset-background")}>
                   <AvatarFallback><Bot /></AvatarFallback>
                 </Avatar>
               )}

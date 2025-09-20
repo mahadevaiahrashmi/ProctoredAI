@@ -6,6 +6,8 @@ import { generateExamQuestions, type GenerateExamQuestionsOutput, type Question 
 import { generateExamSessionPrompt } from "@/ai/flows/generate-exam-session-prompt";
 import { gradeExam, type GradeExamOutput } from "@/ai/flows/grade-exam";
 import { clarifyExamDoubts, type ClarifyExamDoubtsInput } from "@/ai/flows/clarify-exam-doubts";
+import { textToSpeech } from "@/ai/flows/text-to-speech";
+
 
 export async function detectViolationsAction(imageDataUri: string) {
   try {
@@ -70,5 +72,16 @@ export async function clarifyDoubtAction(input: ClarifyExamDoubtsInput): Promise
     } catch (error) {
         console.error("Error clarifying doubt:", error);
         return "I'm sorry, I encountered an error while trying to respond. Please try asking again.";
+    }
+}
+
+export async function textToSpeechAction(text: string): Promise<string> {
+    try {
+        const result = await textToSpeech({ text });
+        return result.audioDataUri;
+    } catch (error) {
+        console.error("Error converting text to speech:", error);
+        // Return an empty string or handle the error as appropriate for the client
+        return "";
     }
 }
