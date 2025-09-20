@@ -16,18 +16,18 @@ const ChatMessageSchema = z.object({
   content: z.string(),
 });
 
-const GradedQuestionSchemaForTutor = z.object({
-  questionId: z.number(),
-  isCorrect: z.boolean(),
-  feedback: z.string(),
-});
-
-// We need to redefine a subset of the GradeExamOutput schema for the prompt,
-// as we can't import the Zod object directly from a 'use server' file.
-const GradeExamOutputSchemaForTutor = z.object({
+// We must re-define the Zod schema for GradeExamOutput here, because
+// "use server" files cannot export Zod schemas, only types.
+const GradeExamOutputSchemaForInput = z.object({
   overallScore: z.number(),
   summaryReport: z.string(),
-  gradedQuestions: z.array(GradedQuestionSchemaForTutor),
+  gradedQuestions: z.array(
+    z.object({
+      questionId: z.number(),
+      isCorrect: z.boolean(),
+      feedback: z.string(),
+    })
+  ),
 });
 
 
@@ -45,7 +45,7 @@ const ClarifyExamDoubtsInputSchema = z.object({
   userAnswers: z
     .record(z.union([z.string(), z.array(z.string())]))
     .describe("The user's answers, indexed by question ID."),
-  gradingReport: GradeExamOutputSchemaForTutor.describe(
+  gradingReport: GradeExamOutputSchemaForInput.describe(
     'The generated grading report.'
   ),
   chatHistory: z
