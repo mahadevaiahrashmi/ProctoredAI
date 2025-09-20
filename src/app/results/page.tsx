@@ -239,14 +239,14 @@ function ResultsContent() {
         </Card>
         
         {/* AI Tutor Chat */}
-        <Card className="shadow-2xl">
+        <Card className="shadow-2xl bg-transparent border-0">
             <CardHeader>
                 <div className='flex items-center gap-4'>
-                    <div className='p-2 bg-primary/10 rounded-full'>
+                    <div className='p-3 bg-primary/10 rounded-full'>
                         <Bot className="h-8 w-8 text-primary" />
                     </div>
                     <div>
-                        <CardTitle>AI Tutor</CardTitle>
+                        <CardTitle className="text-2xl">AI Tutor</CardTitle>
                         <CardDescription>Have questions about your results? Ask me anything!</CardDescription>
                     </div>
                 </div>
