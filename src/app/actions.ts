@@ -4,7 +4,8 @@ import { detectExamViolations } from "@/ai/flows/detect-exam-violations";
 import { summarizeProctoringAlerts } from "@/ai/flows/summarize-proctoring-alerts";
 import { generateExamQuestions, type GenerateExamQuestionsOutput, type Question } from "@/ai/flows/generate-exam-questions";
 import { generateExamSessionPrompt } from "@/ai/flows/generate-exam-session-prompt";
-import { gradeExam, GradeExamOutput } from "@/ai/flows/grade-exam";
+import { gradeExam, type GradeExamOutput } from "@/ai/flows/grade-exam";
+import { clarifyExamDoubts, type ClarifyExamDoubtsInput } from "@/ai/flows/clarify-exam-doubts";
 
 export async function detectViolationsAction(imageDataUri: string) {
   try {
@@ -22,7 +23,7 @@ export async function detectViolationsAction(imageDataUri: string) {
 
 export async function summarizeAlertsAction(alerts: string[]) {
     if (alerts.length === 0) {
-        return "No alerts to summarize.";
+        return "No proctoring violations were detected during the exam session.";
     }
     try {
         const result = await summarizeProctoringAlerts({ alerts });
@@ -59,5 +60,15 @@ export async function gradeExamAction(questions: Question[], userAnswers: Record
     } catch (error) {
         console.error("Error grading exam:", error);
         throw new Error("Failed to grade exam.");
+    }
+}
+
+export async function clarifyDoubtAction(input: ClarifyExamDoubtsInput): Promise<string> {
+    try {
+        const result = await clarifyExamDoubts(input);
+        return result.response;
+    } catch (error) {
+        console.error("Error clarifying doubt:", error);
+        return "I'm sorry, I encountered an error while trying to respond. Please try asking again.";
     }
 }

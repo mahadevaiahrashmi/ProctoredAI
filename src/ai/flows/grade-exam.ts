@@ -35,7 +35,7 @@ const GradedQuestionSchema = z.object({
     feedback: z.string().describe("Specific feedback for the user's answer to this question."),
 });
 
-const GradeExamOutputSchema = z.object({
+export const GradeExamOutputSchema = z.object({
   overallScore: z
     .number()
     .min(0)
@@ -89,9 +89,9 @@ Here is the exam data:
 {{/each}}
 
 **Student's Answers:**
-{{#each userAnswers}}
-- **Question ID: {{@key}}**
-  - **Answer:** {{this}}
+{{#each (keys userAnswers)}}
+- **Question ID: {{this}}**
+  - **Answer:** {{lookup ../userAnswers this}}
 {{/each}}
 `,
 });
