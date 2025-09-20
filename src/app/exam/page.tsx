@@ -80,6 +80,9 @@ export default function ExamPage() {
             </Button>
           </SheetTrigger>
           <SheetContent side="left" className="p-0 w-[350px] bg-background">
+            <SheetHeader className="p-4">
+              <SheetTitle className="sr-only">Proctoring Panel</SheetTitle>
+            </SheetHeader>
             <ProctoringPanel violations={violations} setViolations={setViolations} />
           </SheetContent>
         </Sheet>
