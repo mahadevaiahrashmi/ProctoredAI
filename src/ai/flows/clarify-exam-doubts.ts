@@ -22,6 +22,8 @@ const GradedQuestionSchemaForTutor = z.object({
   feedback: z.string(),
 });
 
+// We need to redefine a subset of the GradeExamOutput schema for the prompt,
+// as we can't import the Zod object directly from a 'use server' file.
 const GradeExamOutputSchemaForTutor = z.object({
   overallScore: z.number(),
   summaryReport: z.string(),
@@ -51,9 +53,13 @@ const ClarifyExamDoubtsInputSchema = z.object({
     .describe('The history of the conversation so far.'),
   userQuery: z.string().describe('The latest query from the user.'),
 });
+
 export type ClarifyExamDoubtsInput = z.infer<
   typeof ClarifyExamDoubtsInputSchema
->;
+> & {
+  // We manually intersect the imported TypeScript type here.
+  gradingReport: GradeExamOutput;
+};
 
 const ClarifyExamDoubtsOutputSchema = z.object({
   response: z
