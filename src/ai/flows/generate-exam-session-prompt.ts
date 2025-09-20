@@ -38,7 +38,7 @@ const prompt = ai.definePrompt({
   name: 'generateExamSessionPrompt',
   input: {schema: GenerateExamSessionPromptInputSchema},
   output: {schema: GenerateExamSessionPromptOutputSchema},
-  prompt: `Welcome, {{{studentName}}}, to the {{{examName}}} exam!\n\nPlease follow these steps to begin:\n\n1.  Verify your identity by showing your photo ID to the camera.\n2.  Grant camera permissions to allow for proctoring.\n3.  Grant microphone permissions to allow for proctoring.\n4.  Ensure no other applications are running that could be used to cheat (close them).  We will be monitoring this.\n5.  Make sure there are no other people in the room, and that there will not be any other people entering the room during the exam.\n\nOnce these steps are complete, you may begin the exam. Good luck!`,
+  prompt: `Welcome, {{studentName}}, to the {{examName}} exam!\n\nPlease follow these steps to begin:\n\n1.  Verify your identity by showing your photo ID to the camera.\n2.  Grant camera permissions to allow for proctoring.\n3.  Grant microphone permissions to allow for proctoring.\n4.  Ensure no other applications are running that could be used to cheat (close them).  We will be monitoring this.\n5.  Make sure there are no other people in the room, and that there will not be any other people entering the room during the exam.\n\nOnce these steps are complete, you may begin the exam. Good luck!`,
 });
 
 const generateExamSessionPromptFlow = ai.defineFlow(
