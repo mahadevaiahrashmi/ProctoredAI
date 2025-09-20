@@ -21,7 +21,13 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
-import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
+import {
+  Sheet,
+  SheetContent,
+  SheetHeader,
+  SheetTitle,
+  SheetTrigger,
+} from "@/components/ui/sheet";
 import { PanelLeft } from "lucide-react";
 
 export default function ExamPage() {
@@ -48,7 +54,7 @@ export default function ExamPage() {
       setCurrentQuestionIndex(currentQuestionIndex - 1);
     }
   };
-  
+
   const handleSubmit = () => {
     // In a real app, you would save the answers to a database.
     console.log("Submitting answers:", answers);
@@ -70,6 +76,9 @@ export default function ExamPage() {
             </Button>
           </SheetTrigger>
           <SheetContent side="left" className="p-0 w-[350px] bg-background">
+            <SheetHeader>
+              <SheetTitle className="sr-only">Proctoring Panel</SheetTitle>
+            </SheetHeader>
             <ProctoringPanel />
           </SheetContent>
         </Sheet>
@@ -78,62 +87,65 @@ export default function ExamPage() {
         <main className="flex flex-1 flex-col p-4 md:p-6 lg:p-8">
           <div className="flex h-full flex-col">
             <div className="p-6 rounded-xl border bg-card text-card-foreground shadow-lg mb-6 lg:hidden">
-                <ProctoringPanel />
+              <ProctoringPanel />
             </div>
 
             <div className="flex h-full flex-col rounded-xl border bg-card text-card-foreground shadow-lg">
-                <div className="p-6">
+              <div className="p-6">
                 <p className="text-sm text-muted-foreground">
-                    Question {currentQuestionIndex + 1} of {totalQuestions}
+                  Question {currentQuestionIndex + 1} of {totalQuestions}
                 </p>
                 <Progress value={progress} className="mt-2" />
-                </div>
+              </div>
 
-                <div className="flex-1 overflow-y-auto p-6">
+              <div className="flex-1 overflow-y-auto p-6">
                 <QuestionDisplay
-                    question={currentQuestion}
-                    onAnswerChange={handleAnswerChange}
-                    currentAnswer={answers[currentQuestion.id]}
+                  question={currentQuestion}
+                  onAnswerChange={handleAnswerChange}
+                  currentAnswer={answers[currentQuestion.id]}
                 />
-                </div>
+              </div>
 
-                <div className="flex items-center justify-between border-t p-4">
+              <div className="flex items-center justify-between border-t p-4">
                 <Button
-                    variant="outline"
-                    onClick={handlePrev}
-                    disabled={currentQuestionIndex === 0}
+                  variant="outline"
+                  onClick={handlePrev}
+                  disabled={currentQuestionIndex === 0}
                 >
-                    <ChevronLeft />
-                    Previous
+                  <ChevronLeft />
+                  Previous
                 </Button>
                 {currentQuestionIndex === totalQuestions - 1 ? (
-                    <AlertDialog>
+                  <AlertDialog>
                     <AlertDialogTrigger asChild>
-                        <Button>
+                      <Button>
                         <Send />
                         Submit Exam
-                        </Button>
+                      </Button>
                     </AlertDialogTrigger>
                     <AlertDialogContent>
-                        <AlertDialogHeader>
+                      <AlertDialogHeader>
                         <AlertDialogTitle>Are you sure?</AlertDialogTitle>
                         <AlertDialogDescription>
-                            This will end the exam and submit your answers. You cannot undo this action.
+                          This will end the exam and submit your answers. You
+                          cannot undo this action.
                         </AlertDialogDescription>
-                        </AlertDialogHeader>
-                        <AlertDialogFooter>
+                      </AlertDialogHeader>
+                      <AlertDialogFooter>
                         <AlertDialogCancel>Cancel</AlertDialogCancel>
-                        <AlertDialogAction onClick={handleSubmit}>Submit</AlertDialogAction>
-                        </AlertDialogFooter>
+                        <AlertDialogAction onClick={handleSubmit}>
+                          Submit
+                        </AlertDialogAction>
+                      </AlertDialogFooter>
                     </AlertDialogContent>
-                    </AlertDialog>
+                  </AlertDialog>
                 ) : (
-                    <Button onClick={handleNext}>
+                  <Button onClick={handleNext}>
                     Next
                     <ChevronRight />
-                    </Button>
+                  </Button>
                 )}
-                </div>
+              </div>
             </div>
           </div>
         </main>
