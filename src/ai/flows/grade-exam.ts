@@ -10,45 +10,50 @@
 
 import {ai} from '@/ai/genkit';
 import {z} from 'genkit';
-import { Question } from './generate-exam-questions';
-
 
 const GradeExamInputSchema = z.object({
-  questions: z.array(
-    z.object({
-      id: z.number(),
-      type: z.enum(['multiple-choice', 'text']),
-      text: z.string(),
-      options: z.array(z.string()).optional(),
-      answer: z.string(),
-    })
-  ).describe("The list of questions from the exam."),
-  userAnswers: z.record(z.union([z.string(), z.array(z.string())])).describe("The user's answers, indexed by question ID."),
+  questions: z
+    .array(
+      z.object({
+        id: z.number(),
+        type: z.enum(['multiple-choice', 'text']),
+        text: z.string(),
+        options: z.array(z.string()).optional(),
+        answer: z.string(),
+      })
+    )
+    .describe('The list of questions from the exam.'),
+  userAnswers: z
+    .record(z.union([z.string(), z.array(z.string())]))
+    .describe("The user's answers, indexed by question ID."),
 });
 
 export type GradeExamInput = z.infer<typeof GradeExamInputSchema>;
 
-
 const GradedQuestionSchema = z.object({
-    questionId: z.number(),
-    isCorrect: z.boolean(),
-    feedback: z.string().describe("Specific feedback for the user's answer to this question."),
+  questionId: z.number(),
+  isCorrect: z.boolean(),
+  feedback: z
+    .string()
+    .describe("Specific feedback for the user's answer to this question."),
 });
 
-export const GradeExamOutputSchema = z.object({
+const GradeExamOutputSchema = z.object({
   overallScore: z
     .number()
     .min(0)
     .max(100)
-    .describe(
-      'The overall percentage score for the exam, from 0 to 100.'
-    ),
+    .describe('The overall percentage score for the exam, from 0 to 100.'),
   summaryReport: z
     .string()
     .describe(
-      'A comprehensive summary of the student\'s performance, including strengths, weaknesses, and areas for improvement.'
+      "A comprehensive summary of the student's performance, including strengths, weaknesses, and areas for improvement."
     ),
-  gradedQuestions: z.array(GradedQuestionSchema).describe("A question-by-question breakdown of the user's performance.")
+  gradedQuestions: z
+    .array(GradedQuestionSchema)
+    .describe(
+      "A question-by-question breakdown of the user's performance."
+    ),
 });
 
 export type GradeExamOutput = z.infer<typeof GradeExamOutputSchema>;

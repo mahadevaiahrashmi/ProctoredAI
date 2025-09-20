@@ -9,12 +9,25 @@
 
 import {ai} from '@/ai/genkit';
 import {z} from 'genkit';
-import {GradeExamOutputSchema} from './grade-exam';
+import {type GradeExamOutput} from './grade-exam';
 
 const ChatMessageSchema = z.object({
   role: z.enum(['user', 'model']),
   content: z.string(),
 });
+
+const GradedQuestionSchemaForTutor = z.object({
+  questionId: z.number(),
+  isCorrect: z.boolean(),
+  feedback: z.string(),
+});
+
+const GradeExamOutputSchemaForTutor = z.object({
+  overallScore: z.number(),
+  summaryReport: z.string(),
+  gradedQuestions: z.array(GradedQuestionSchemaForTutor),
+});
+
 
 const ClarifyExamDoubtsInputSchema = z.object({
   examTitle: z.string().describe('The title of the exam.'),
@@ -30,7 +43,7 @@ const ClarifyExamDoubtsInputSchema = z.object({
   userAnswers: z
     .record(z.union([z.string(), z.array(z.string())]))
     .describe("The user's answers, indexed by question ID."),
-  gradingReport: GradeExamOutputSchema.describe(
+  gradingReport: GradeExamOutputSchemaForTutor.describe(
     'The generated grading report.'
   ),
   chatHistory: z
