@@ -2,7 +2,7 @@
 
 import { useEffect, useState, Suspense } from 'react';
 import Link from 'next/link';
-import { Home, AlertTriangle, CheckCircle, Loader2, Award, FileText, BarChart, Percent } from 'lucide-react';
+import { Home, AlertTriangle, CheckCircle, Loader2, Award, FileText, BarChart, Percent, XCircle } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import {
   Card,
@@ -233,27 +233,5 @@ export default function ResultsPage() {
         <Suspense fallback={<div>Loading...</div>}>
             <ResultsContent />
         </Suspense>
-    )
-}
-
-// Add XCircle icon for the results page
-function XCircle(props: React.ComponentProps<"svg">) {
-    return (
-        <svg
-        {...props}
-        xmlns="http://www.w3.org/2000/svg"
-        width="24"
-        height="24"
-        viewBox="0 0 24 24"
-        fill="none"
-        stroke="currentColor"
-        strokeWidth="2"
-        strokeLinecap="round"
-        strokeLinejoin="round"
-        >
-        <circle cx="12" cy="12" r="10" />
-        <path d="m15 9-6 6" />
-        <path d="m9 9 6 6" />
-        </svg>
     )
 }

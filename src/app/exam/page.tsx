@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
-import { ChevronLeft, ChevronRight, Send } from "lucide-react";
+import { ChevronLeft, ChevronRight, Send, PanelLeft } from "lucide-react";
 
 import { type Question } from "@/ai/flows/generate-exam-questions";
 import { Button } from "@/components/ui/button";
@@ -10,6 +10,8 @@ import { Progress } from "@/components/ui/progress";
 import ProctoringPanel from "@/components/proctoring-panel";
 import ExamHeader from "@/components/exam-header";
 import QuestionDisplay from "@/components/question-display";
+import FloatingCamera from "@/components/floating-camera";
+import { Skeleton } from "@/components/ui/skeleton";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -26,12 +28,9 @@ import {
   SheetContent,
   SheetHeader,
   SheetTitle,
-  SheetTrigger,
 } from "@/components/ui/sheet";
-import { PanelLeft } from "lucide-react";
-import FloatingCamera from "@/components/floating-camera";
-import { Skeleton } from "@/components/ui/skeleton";
 import { examData as staticExamData } from "@/lib/data";
+
 
 export default function ExamPage() {
   const router = useRouter();
@@ -39,7 +38,7 @@ export default function ExamPage() {
   const [currentQuestionIndex, setCurrentQuestionIndex] = useState(0);
   const [answers, setAnswers] = useState<Record<number, string | string[]>>({});
   const [violations, setViolations] = useState<string[]>([]);
-  
+
   useEffect(() => {
     try {
       const examDataString = sessionStorage.getItem('examData');
@@ -47,6 +46,7 @@ export default function ExamPage() {
         const parsedData = JSON.parse(examDataString);
         setExamData(parsedData);
       } else {
+        // Fallback to static data if nothing is in session storage
         setExamData(staticExamData);
       }
     } catch (error) {
@@ -89,7 +89,7 @@ export default function ExamPage() {
     sessionStorage.setItem('examResults', JSON.stringify({
       questions: examData.questions,
       answers: answers,
-      violations: violations,
+      violations: violations, // Pass violations to the results page
       title: examData.title,
     }));
     router.push(`/results`);
@@ -110,8 +110,8 @@ export default function ExamPage() {
             </Button>
           </SheetTrigger>
           <SheetContent side="left" className="p-0 w-[350px] bg-background">
-             <SheetHeader className="p-4 border-b">
-                <SheetTitle className="text-lg">Proctoring</SheetTitle>
+            <SheetHeader className="p-4 border-b">
+                <SheetTitle>Proctoring</SheetTitle>
             </SheetHeader>
             <ProctoringPanel violations={violations} setViolations={setViolations} />
           </SheetContent>
