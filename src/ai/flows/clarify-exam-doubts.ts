@@ -99,12 +99,11 @@ You have been provided with the full context of the exam: the questions, the stu
 *   **Overall Score:** {{gradingReport.overallScore}}%
 
 *   **Questions, Answers, and Feedback:**
-    {{#each gradingReport.gradedQuestions}}
-    - **Question {{lookup ../questions "id" this.questionId "text"}}**
-      - **Correct Answer:** {{lookup ../questions "id" this.questionId "answer"}}
-      - **Student's Answer:** {{lookup ../userAnswers this.questionId}}
-      - **Result:** {{#if this.isCorrect}}Correct{{else}}Incorrect{{/if}}
-      - **AI Feedback:** {{this.feedback}}
+    {{#each questions}}
+    - **Question {{id}}:** {{text}}
+      - **Correct Answer:** {{answer}}
+      - **Student's Answer:** {{lookup ../userAnswers id}}
+      - **AI Feedback:** {{lookup ../gradingReport.gradedQuestions "questionId" id "feedback"}}
     {{/each}}
 
 **Conversation History:**
