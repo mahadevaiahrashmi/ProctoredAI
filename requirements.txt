@@ -1,0 +1,102 @@
+# =============================================================================
+# ProctoredAI — Dependency Inventory
+# =============================================================================
+# NOTE: This is a Node.js / TypeScript project. The AUTHORITATIVE manifest is
+# `package.json` (with `package-lock.json` pinning exact versions). This file is
+# DOCUMENTATION ONLY — a human-readable, grouped overview of what each dependency
+# is for. Do NOT install from here. Install with:
+#
+#     npm install
+#
+# Versions below use npm semver ranges and mirror package.json at the time of
+# writing. If they drift, package.json wins.
+# =============================================================================
+
+# -----------------------------------------------------------------------------
+# Runtime / toolchain
+# -----------------------------------------------------------------------------
+node>=20            # pinned to nodejs_20 in .idx/dev.nix
+npm>=9              # bundled with Node 20
+
+# -----------------------------------------------------------------------------
+# Core framework
+# -----------------------------------------------------------------------------
+next==15.3.3              # React framework: App Router, RSC, Server Actions
+react==^18.3.1            # UI library
+react-dom==^18.3.1        # React DOM renderer
+
+# -----------------------------------------------------------------------------
+# AI / Genkit (Google Gemini)  — powers generation, proctoring, grading, tutor, TTS
+# -----------------------------------------------------------------------------
+genkit==^1.14.1                 # Genkit core (flows, prompts, schemas)
+@genkit-ai/googleai==^1.14.1    # Google AI (Gemini) plugin
+@genkit-ai/next==^1.14.1        # Genkit <-> Next.js integration
+genkit-cli==^1.14.1             # (dev) Genkit developer UI / `genkit start`
+wav==^1.0.2                     # Encode Gemini TTS PCM output into WAV
+dotenv==^16.5.0                 # Load GEMINI_API_KEY from .env (Genkit dev entry)
+
+# -----------------------------------------------------------------------------
+# UI components — shadcn-ui built on Radix primitives
+# -----------------------------------------------------------------------------
+@radix-ui/react-accordion==^1.2.3
+@radix-ui/react-alert-dialog==^1.1.6
+@radix-ui/react-avatar==^1.1.3
+@radix-ui/react-checkbox==^1.1.4
+@radix-ui/react-collapsible==^1.1.11
+@radix-ui/react-dialog==^1.1.6
+@radix-ui/react-dropdown-menu==^2.1.6
+@radix-ui/react-label==^2.1.2
+@radix-ui/react-menubar==^1.1.6
+@radix-ui/react-popover==^1.1.6
+@radix-ui/react-progress==^1.1.2
+@radix-ui/react-radio-group==^1.2.3
+@radix-ui/react-scroll-area==^1.2.3
+@radix-ui/react-select==^2.1.6
+@radix-ui/react-separator==^1.1.2
+@radix-ui/react-slider==^1.2.3
+@radix-ui/react-slot==^1.2.3
+@radix-ui/react-switch==^1.1.3
+@radix-ui/react-tabs==^1.1.3
+@radix-ui/react-toast==^1.2.6
+@radix-ui/react-tooltip==^1.1.8
+lucide-react==^0.475.0          # Icon set
+embla-carousel-react==^8.6.0    # Carousel primitive
+recharts==^2.15.1               # Charts (results/data viz)
+react-day-picker==^8.10.1       # Date picker
+date-fns==^3.6.0                # Date utilities (used with the picker)
+
+# -----------------------------------------------------------------------------
+# Styling
+# -----------------------------------------------------------------------------
+tailwindcss==^3.4.1             # (dev) Utility-first CSS
+tailwindcss-animate==^1.0.7     # Animation utilities for Tailwind
+tailwind-merge==^3.0.1          # Merge/De-dupe Tailwind class strings
+class-variance-authority==^0.7.1 # Variant-based component styling
+clsx==^2.1.1                    # Conditional className helper
+postcss==^8                     # (dev) CSS processing pipeline
+
+# -----------------------------------------------------------------------------
+# Forms & validation
+# -----------------------------------------------------------------------------
+react-hook-form==^7.54.2        # Form state management
+@hookform/resolvers==^4.1.3     # Bridge react-hook-form <-> Zod
+zod==^3.24.2                    # Schema validation (also Genkit I/O schemas)
+
+# -----------------------------------------------------------------------------
+# Backend SDK (present but not currently used for persistence)
+# -----------------------------------------------------------------------------
+firebase==^11.9.1               # Firebase client SDK (emulator config exists; unused in app code)
+
+# -----------------------------------------------------------------------------
+# Misc
+# -----------------------------------------------------------------------------
+patch-package==^8.0.0           # Apply local patches to node_modules (no patches/ dir present)
+
+# -----------------------------------------------------------------------------
+# Dev / build types
+# -----------------------------------------------------------------------------
+typescript==^5                  # (dev) Type system / compiler
+@types/node==^20                # (dev) Node type defs
+@types/react==^18               # (dev) React type defs
+@types/react-dom==^18           # (dev) React DOM type defs
+@types/wav==^1.0.4              # (dev) Type defs for `wav`
