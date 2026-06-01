@@ -48,7 +48,8 @@ See **[SETUP.md](SETUP.md)** for full prerequisites, scripts, and troubleshootin
 | [docs/PRD.md](docs/PRD.md) | Product requirements: goals, users, stories, metrics |
 | [docs/product_design.md](docs/product_design.md) | Flows, information architecture, visual & interaction design |
 | [docs/system_design.md](docs/system_design.md) | Architecture, components, ops, alternatives |
-| [docs/user_manual.md](docs/user_manual.md) | End-user guide |
+| [docs/quick-start.md](docs/quick-start.md) | One-page quick start for test-takers (non-technical) |
+| [docs/user_manual.md](docs/user_manual.md) | End-user guide (full, non-technical) |
 | [docs/testing.md](docs/testing.md) | Test strategy, conventions, CI |
 | [docs/UAT.md](docs/UAT.md) | User acceptance test plan and sign-off |
 | [docs/tech_debt.md](docs/tech_debt.md) | Known technical debt and tracking process |
