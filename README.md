@@ -9,7 +9,7 @@ and **Genkit** on top of the **Google Gemini** models.
 
 ## Credits / Source
 
-This repository is based on **[abhinavrbharadwaj7/AI_test_propter](https://github.com/abhinavrbharadwaj7/AI_test_propter)**
+This repository was cloned from **[abhinavrbharadwaj7/AI_test_propter](https://github.com/abhinavrbharadwaj7/AI_test_propter)**
 by **Abhinav R Bharadwaj**. All credit for the original application goes to the upstream
 author. It was scaffolded in **Firebase Studio** as a Next.js starter.
 
