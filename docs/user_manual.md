@@ -11,8 +11,9 @@ ProctoredAI creates a short exam on any topic you choose, watches your webcam fo
 suspicious activity while you take it, grades your answers, and then gives you an AI
 tutor you can talk to about your results. The tutor also reads its answers out loud.
 
-**You will need:** a computer with a **webcam and microphone**, a modern web browser
-(Chrome, Edge, Safari, or Firefox), and an internet connection.
+**You will need:** a modern web browser (Chrome, Edge, Safari, or Firefox) and an internet
+connection. A **webcam and microphone** are needed for proctoring — but you can also take the
+exam **unproctored**, without a camera.
 
 ---
 
@@ -40,13 +41,12 @@ The app builds your exam — this takes a few seconds.
 You'll see a personalized welcome message with the rules for the session. Read it, then
 click **Start System Check**.
 
-### Step 3 — Allow camera & microphone
+### Step 3 — Allow camera & microphone (or skip it)
 Your browser will ask for permission to use your **camera** and **microphone**.
-- Click **Allow** for both.
-- Each item turns into a **green check** when granted.
-- When both are green, click **Start Exam**.
+- Click **Allow** for both. Each item turns into a **green check** when granted. When both are green, click **Start Proctored Exam**.
+- **Prefer not to use a camera?** Click **Take Without Camera (Unproctored)** instead. You'll answer the same questions, but the session isn't monitored and your results are clearly labeled as unproctored.
 
-> If you accidentally block them, see [Troubleshooting](#troubleshooting) below.
+> If you accidentally block the camera/mic, see [Troubleshooting](#troubleshooting) below. (If your exam was set up with a no-camera AI option, proctoring may be unavailable and the exam simply starts unproctored.)
 
 ### Step 4 — Take the exam
 - The exam has **5 questions**, a mix of **multiple-choice** and **written** answers.
@@ -57,6 +57,8 @@ Your browser will ask for permission to use your **camera** and **microphone**.
   - your live camera,
   - a **status** (green "System Secure" or red "Potential Violation Detected"),
   - a **violation log** listing anything flagged, with timestamps.
+
+> If you chose the **unproctored** option in Step 3, there's no camera or proctoring panel — you'll just see the questions and the timer.
 
 ### Step 5 — Submit
 - On the last question, click **Submit Exam**.
@@ -69,11 +71,13 @@ After a short "Grading your exam…" wait, you'll see:
 - a **question-by-question breakdown** — click any row to expand it and see your answer, the correct answer, and feedback,
 - a **Proctoring Violation Report** (only if anything was flagged).
 
+If you took the exam **unproctored**, the page says so ("Unproctored session — no integrity monitoring was performed") and there's no violation report.
+
 ### Step 7 — Ask the AI Tutor
 At the bottom of the results page is the **AI Tutor**:
 1. Type a question about your exam — e.g. *"Why was my answer to question 2 wrong?"*
 2. Press **Send** (or Enter).
-3. The tutor replies in writing **and speaks the answer aloud**. Its icon glows while it's talking.
+3. The tutor replies in writing **and speaks the answer aloud**. Its icon glows while it's talking. Don't want audio? Click the **speaker icon** next to the message box to mute it — click again to unmute. (On some setups the spoken voice isn't available, so the tutor is text-only.)
 
 The tutor only discusses **your exam**. If you ask about something unrelated, it will
 politely steer you back.
@@ -107,12 +111,18 @@ records what the system noticed.
 session for the current tab only. **Refreshing or opening a new tab can lose your progress**, so
 avoid it during the exam.
 
-**Is my camera recorded?** The app captures still frames from your webcam while you test and
-sends them to an AI service to check for violations. It does not save a video in the app. If
-data handling matters to you, ask whoever provided the app about their privacy policy.
+**Can I take the exam without a camera?** Yes. At the camera step (Step 3) choose **"Take
+Without Camera (Unproctored)"**. You'll answer the same questions, but nothing is monitored and
+your results are labeled as unproctored.
 
-**Why didn't the tutor speak?** Audio can fail quietly if the speech service is unavailable, or
-your tab may be muted. The written answer still appears.
+**Is my camera recorded?** Only if you take the exam **proctored**. In that case the app
+captures still frames from your webcam while you test and sends them to an AI service to check
+for violations (it does not save a video in the app). If you'd rather not be on camera, use the
+unproctored option above. If data handling matters to you, ask whoever provided the app about
+their privacy policy.
+
+**Why didn't the tutor speak?** You may have muted it with the **speaker icon**, your tab may be
+muted, or the spoken voice may be unavailable on your setup. The written answer always appears.
 
 ---
 
@@ -120,7 +130,8 @@ your tab may be muted. The written answer still appears.
 
 | Problem | What to do |
 | --- | --- |
-| Camera/microphone shows a **red X** | Click **Allow** when prompted. If you blocked it, open your browser's site settings (the padlock/permissions icon in the address bar), set Camera and Microphone to **Allow**, then **refresh** the page. |
+| Camera/microphone shows a **red X** | Click **Allow** when prompted. If you blocked it, open your browser's site settings (the padlock/permissions icon in the address bar), set Camera and Microphone to **Allow**, then **refresh** the page. **Or** just choose **Take Without Camera (Unproctored)** to proceed without it. |
+| The tutor's **voice won't turn off** | Click the **speaker icon** beside the tutor's message box to mute it; click again to unmute. Also check your browser/system volume. |
 | **"Failed to generate exam"** | Try a different topic and click again. If it keeps failing, the AI service may be temporarily unavailable — wait a moment and retry. |
 | The exam page looks **empty or shows a sample about Quantum Physics** | You may have opened the exam directly or lost your session. Go back to the home page and start from Step 1. |
 | **AI Tutor shows an error** | Send your message again. If it persists, the AI service may be busy. |

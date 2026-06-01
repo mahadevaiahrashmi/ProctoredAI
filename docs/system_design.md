@@ -8,16 +8,17 @@ Architecture, component breakdown, data flow, operations, and design alternative
 
 ProctoredAI is a **single Next.js 15 application** (App Router) with no separate backend.
 The browser runs React client components; AI work happens in **Server Actions** that call
-**Genkit flows**, which in turn call the **Google Gemini** API. There is no database —
-session state is held in the browser's `sessionStorage`.
+**Genkit flows**, which in turn call the **configured AI provider** (Google Gemini by default;
+optionally Ollama or OpenRouter — see §8 and [ADR-0009](adr/0009-pluggable-ai-providers-and-camera-opt-out.md)).
+There is no database — session state is held in the browser's `sessionStorage`.
 
 ```
 ┌──────────────────────────── Browser (client) ─────────────────────────────┐
 │  React client components ("use client")                                    │
 │   • Setup wizard (page.tsx)        • Exam runner (exam/page.tsx)            │
 │   • Proctoring panel  ── webcam ─► canvas frame (JPEG data URI)             │
-│   • Results + Chat tutor           • <audio> playback (TTS)                 │
-│   sessionStorage: examData, examResults                                    │
+│   • Results + Chat tutor           • <audio> playback (TTS, mutable)        │
+│   sessionStorage: examData, examResults, examConfig (proctored?)           │
 └───────────────┬───────────────────────────────────────────────────────────┘
                 │  Server Action calls (RPC over HTTPS, Next.js)
                 ▼
@@ -29,23 +30,25 @@ session state is held in the browser's `sessionStorage`.
                 │  invoke
                 ▼
 ┌──────────────────────────── Genkit flows (src/ai) ─────────────────────────┐
-│  genkit.ts: ai = genkit({ plugins:[googleAI()], model: gemini-2.5-flash }) │
+│  genkit.ts: AI_PROVIDER selects the plugin → ai = genkit({ plugins:[…] })  │
+│   googleai (default) · ollama · openrouter; exports vision/TTS flags        │
 │  flows/: generate-exam-questions · generate-exam-session-prompt            │
 │          detect-exam-violations · grade-exam · summarize-proctoring-alerts │
 │          clarify-exam-doubts · text-to-speech                              │
 └───────────────┬───────────────────────────────────────────────────────────┘
-                │  HTTPS + GEMINI_API_KEY
+                │  AI provider call (default: HTTPS + GEMINI_API_KEY)
                 ▼
         ┌────────────────────────────┐
-        │   Google Gemini API         │
-        │   gemini-2.5-flash          │
-        │   gemini-2.5-flash-          │
-        │     preview-tts (audio)      │
+        │  AI provider (AI_PROVIDER): │
+        │   googleai → gemini-2.5-    │
+        │     flash (+ preview-tts)   │
+        │   ollama   → local models   │
+        │   openrouter → free models  │
         └────────────────────────────┘
 ```
 
 ### Why this shape
-- **Server Actions** keep the Gemini API key server-side; the browser never sees it.
+- **Server Actions** keep the AI provider key (e.g. Gemini) server-side; the browser never sees it.
 - **Genkit** gives typed, schema-validated (Zod) flows with structured JSON output, which makes the AI calls behave like ordinary typed functions.
 - **No DB** keeps the demo zero-config; the cost is that nothing persists (see §6, §8).
 
@@ -57,8 +60,8 @@ session state is held in the browser's `sessionStorage`.
 | --- | --- | --- |
 | Framework | Next.js 15.3.3 (App Router, RSC, Server Actions) | Dev server on port **9002** via Turbopack |
 | Language | TypeScript 5 | Strict mode on; build fails on type errors (see §7) |
-| AI orchestration | Genkit 1.14 | `defineFlow`, `definePrompt`, Zod schemas |
-| Model provider | `@genkit-ai/googleai` → Gemini 2.5 Flash | TTS uses `gemini-2.5-flash-preview-tts` |
+| AI orchestration | Genkit 1.36 | `defineFlow`, `definePrompt`, Zod schemas |
+| Model provider | Selectable via `AI_PROVIDER`: `@genkit-ai/google-genai` (Gemini, default), `genkitx-ollama`, `@genkit-ai/compat-oai` (OpenRouter) | Capability flags gate vision/TTS per provider; TTS is Gemini-only (`gemini-2.5-flash-preview-tts`) |
 | UI | Tailwind 3.4 + shadcn-ui (Radix) + lucide-react | CSS-variable theming |
 | Validation | Zod | Shared by Genkit I/O and forms |
 | Audio | `wav` | Wraps Gemini PCM output into a WAV data URI |
@@ -122,17 +125,17 @@ ChatMessage   = { role:'user'|'model', content:string }
 ## 4. Runtime data flow
 
 1. **Generate:** Setup form → `generateExamAction(topic, name)` → `{examData, sessionPrompt}` → `sessionStorage.examData`.
-2. **Proctor loop:** `setInterval(1500ms)` → canvas frame → `detectViolationsAction(jpegDataUri)` → violations appended to React state.
-3. **Submit:** `{questions, answers, violations, title}` → `sessionStorage.examResults` → navigate `/results`.
-4. **Grade:** `Promise.all([gradeExamAction(...), summarizeAlertsAction(...)])` → report + violation summary rendered.
-5. **Tutor:** each message → `clarifyDoubtAction(context + history + query)` → text → `textToSpeechAction(text)` → WAV data URI → `<audio>.play()`.
+2. **Proctor loop (proctored sessions only):** `setInterval(1500ms)` → canvas frame → `detectViolationsAction(jpegDataUri)` → violations appended to React state. Skipped when the user opted out of the camera (`examConfig.proctored === false`).
+3. **Submit:** `{questions, answers, violations, title, proctored}` → `sessionStorage.examResults` → navigate `/results`.
+4. **Grade:** `Promise.all([gradeExamAction(...), summarizeAlertsAction(...)])` → report + violation summary rendered (unproctored sessions are labeled instead).
+5. **Tutor:** each message → `clarifyDoubtAction(context + history + query)` → text. If the user hasn't muted voice **and** the provider supports TTS → `textToSpeechAction(text)` → WAV data URI → `<audio>.play()`.
 
 All cross-page handoff is via `sessionStorage` (JSON). Nothing is written to a server store.
 
 ---
 
 ## 5. External integrations & configuration
-- **Google Gemini** via Genkit `googleAI()`. Auth: `GEMINI_API_KEY` (or `GOOGLE_API_KEY`) read from env. See [.env.example](../.env.example).
+- **AI provider (pluggable via `AI_PROVIDER`)** — `googleai` (Genkit `googleAI()`; auth `GEMINI_API_KEY`/`GOOGLE_API_KEY`; **default**), `ollama` (local, keyless; `OLLAMA_*` vars), or `openrouter` (`OPENROUTER_API_KEY`). `genkit.ts` resolves the plugin and exports `providerSupportsVision`/`providerSupportsTTS` flags consumed by the actions/UI. See [.env.example](../.env.example) and [ADR-0009](adr/0009-pluggable-ai-providers-and-camera-opt-out.md).
 - **Browser Media APIs:** `navigator.mediaDevices.getUserMedia` for camera/mic; `<canvas>` for frame capture; `<audio>` for playback.
 - **Google Fonts:** Inter, loaded in `layout.tsx`.
 - **`next.config.ts` image allowlist:** `placehold.co`, `images.unsplash.com`, `picsum.photos`.
@@ -152,8 +155,8 @@ All cross-page handoff is via `sessionStorage` (JSON). Nothing is written to a s
 | Lint | `npm run lint` | `next lint` |
 
 ### Deployment
-- Target: **Firebase App Hosting** (`apphosting.yaml`, `maxInstances: 1`). Set `GEMINI_API_KEY` as a backend secret/env var in the hosting environment.
-- Stateless server (no DB), so horizontal scaling is limited only by the `maxInstances` setting and Gemini quota.
+- Target: **Firebase App Hosting** (`apphosting.yaml`, `maxInstances: 1`). Set the provider key (e.g. `GEMINI_API_KEY`) plus any `AI_PROVIDER`/provider vars as backend secrets/env vars in the hosting environment.
+- Stateless server (no DB), so horizontal scaling is limited only by the `maxInstances` setting and provider quota.
 
 ### Observability
 - Current: `console.error` in actions/flows only. No structured logging, metrics, or tracing.
@@ -164,7 +167,7 @@ All cross-page handoff is via `sessionStorage` (JSON). Nothing is written to a s
 | --- | --- |
 | Missing/invalid API key | Generation/grading/tutor throw user-facing errors; proctoring returns `[]`; TTS returns `""`. |
 | Gemini rate limit/5xx | Same as above; the proctoring loop keeps trying on the next tick. |
-| Camera denied | Setup blocks "Start Exam"; in-exam panel logs "Camera access denied or failed." |
+| Camera denied / declined | Setup offers **Take Without Camera (Unproctored)**; the exam runs without proctoring and results are labeled unproctored. |
 | Direct `/exam` visit | Falls back to `src/lib/data.ts` sample exam. |
 | Lost session (refresh/new tab) | Results unavailable; exam falls back to sample. |
 
@@ -173,7 +176,7 @@ All cross-page handoff is via `sessionStorage` (JSON). Nothing is written to a s
 ## 7. Security & privacy considerations
 - **API key isolation:** Good — the key stays in Server Actions/flows, never shipped to the client.
 - **No authn/authz:** Anyone with the URL can use any feature; there are no roles or rate limits on the AI actions (abuse/cost risk).
-- **Webcam frames to third party:** A JPEG of the user is sent to Gemini every ~1.5s with no consent log or retention statement. This needs a privacy notice and ideally configurable cadence.
+- **Webcam frames to third party:** In a **proctored** session a JPEG of the user is sent to the AI provider every ~1.5s with no consent log or retention statement (still needs a privacy notice + configurable cadence — [TD-003](tech_debt.md)). Users can now **opt out** of the camera entirely and take the exam unproctored ([ADR-0009](adr/0009-pluggable-ai-providers-and-camera-opt-out.md)).
 - **Answer exposure:** Correct answers are generated by AI and stored in client-readable `sessionStorage`; this is a learning tool, not exam-secure.
 - **Build safety:** type/lint errors **fail** `next build` (`ignoreBuildErrors`/`ignoreDuringBuilds` are `false`), and CI re-checks both on every push/PR ([ADR-0008](adr/0008-enforce-type-lint-ci.md), [testing.md](testing.md)).
 
@@ -185,6 +188,8 @@ All cross-page handoff is via `sessionStorage` (JSON). Nothing is written to a s
 | --- | --- | --- | --- |
 | State handoff | `sessionStorage` | Server DB (Firestore), URL/query, React context + single SPA | Chosen path is zero-config and private to the tab, but loses data on refresh/new tab and supports no history/audit. |
 | AI orchestration | Genkit flows | Direct REST/SDK calls, LangChain | Genkit gives typed schemas + a dev UI; adds a framework dependency. |
+| AI provider | Pluggable via `AI_PROVIDER` (Gemini default; Ollama/OpenRouter) | Single hard-wired Gemini; multi-SDK direct calls | Pluggable lowers the key barrier and avoids single-vendor lock-in for non-TTS use, but adds config surface and uneven capabilities (TTS is Gemini-only; small Ollama models can't do structured output) — see [ADR-0009](adr/0009-pluggable-ai-providers-and-camera-opt-out.md), [TD-020](tech_debt.md). |
+| Proctoring requirement | Optional — user can take the exam unproctored | Mandatory camera; block the exam without it | Optional access is more inclusive and a partial consent mitigation ([TD-003](tech_debt.md)), but unproctored results are lower-assurance (and labeled as such) — see [ADR-0009](adr/0009-pluggable-ai-providers-and-camera-opt-out.md). |
 | Proctoring input | Periodic JPEG frames (1.5s) to vision model | Continuous video stream, on-device ML (e.g. face-api/MediaPipe), WebRTC to a proctor | Frame sampling is simple and model-agnostic but adds latency, cost, and privacy exposure; on-device ML would cut cost/privacy risk at the price of complexity and lower accuracy. |
 | Grading | LLM grades MC **and** free-text | Deterministic MC scoring + LLM only for text | LLM-for-everything is uniform but can mis-score deterministic MC; a hybrid would be cheaper and more reliable for MC. |
 | Tutor prompt | Custom string prompt built in code | Use the declared `definePrompt` Handlebars template | The Handlebars prompt is defined but unused — duplicated logic; consolidating would reduce drift (tracked in [tech_debt.md](tech_debt.md)). |

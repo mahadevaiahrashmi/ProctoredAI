@@ -8,7 +8,7 @@
  * - DetectExamViolationsOutput - The return type for the detectExamViolations function.
  */
 
-import {ai} from '@/ai/genkit';
+import {ai, visionModel} from '@/ai/genkit';
 import {z} from 'genkit';
 
 const DetectExamViolationsInputSchema = z.object({
@@ -37,6 +37,10 @@ export async function detectExamViolations(
 
 const detectExamViolationsPrompt = ai.definePrompt({
   name: 'detectExamViolationsPrompt',
+  // Proctoring requires a vision-capable model. The active provider exposes one
+  // via `visionModel`; for Ollama this is the (separate) OLLAMA_VISION_MODEL,
+  // while for Gemini/OpenRouter it is the same multimodal default model.
+  model: visionModel,
   input: {schema: DetectExamViolationsInputSchema},
   output: {schema: DetectExamViolationsOutputSchema},
   prompt: `You are an AI proctoring system analyzing a video feed for exam violations.

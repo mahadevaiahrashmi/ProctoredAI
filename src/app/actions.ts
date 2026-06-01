@@ -7,9 +7,33 @@ import { generateExamSessionPrompt } from "@/ai/flows/generate-exam-session-prom
 import { gradeExam, type GradeExamOutput } from "@/ai/flows/grade-exam";
 import { clarifyExamDoubts, type ClarifyExamDoubtsInput } from "@/ai/flows/clarify-exam-doubts";
 import { textToSpeech } from "@/ai/flows/text-to-speech";
+import { aiProvider, providerSupportsTTS, providerSupportsVision } from "@/ai/genkit";
+
+/**
+ * Capability flags for the active AI provider, exposed to client components so
+ * the UI can degrade gracefully (e.g. offer only the unproctored path when the
+ * provider has no vision model, or skip spoken-tutor controls without TTS).
+ */
+export async function getProviderCapabilitiesAction(): Promise<{
+  provider: string;
+  vision: boolean;
+  tts: boolean;
+}> {
+  return {
+    provider: aiProvider,
+    vision: providerSupportsVision,
+    tts: providerSupportsTTS,
+  };
+}
 
 
 export async function detectViolationsAction(imageDataUri: string) {
+  // Proctoring needs a vision-capable model. On providers without one (e.g.
+  // Ollama with no OLLAMA_VISION_MODEL), skip the call instead of feeding frames
+  // to a text-only model. The UI surfaces the unproctored state separately.
+  if (!providerSupportsVision) {
+    return [];
+  }
   try {
     const result = await detectExamViolations({
       videoDataUri: imageDataUri,
@@ -79,6 +103,11 @@ export async function clarifyDoubtAction(input: ClarifyExamDoubtsInput): Promise
 }
 
 export async function textToSpeechAction(text: string): Promise<string> {
+    // Only Gemini implements the TTS flow. On other providers the tutor degrades
+    // to text: returning "" makes the client skip audio playback (see chat-tutor).
+    if (!providerSupportsTTS) {
+        return "";
+    }
     try {
         const result = await textToSpeech({ text });
         return result.audioDataUri;

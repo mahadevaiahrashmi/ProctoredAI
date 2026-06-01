@@ -46,9 +46,10 @@ Exact versions from `package.json` (Node **20**, npm 9+). Pin these to reproduce
 | React | `react`, `react-dom` | `^18.3.1` |
 | Language | `typescript` | `^5` |
 | Lint | `eslint`, `eslint-config-next` | `^8.57.1`, `^15.3.3` |
-| AI runtime | `genkit`, `@genkit-ai/googleai`, `@genkit-ai/next` | `^1.14.1` |
-| AI CLI (dev) | `genkit-cli` | `^1.14.1` |
-| Models | (config, not a package) | `googleai/gemini-2.5-flash`; TTS `gemini-2.5-flash-preview-tts` (voice `Algenib`) |
+| AI runtime | `genkit`, `@genkit-ai/google-genai`, `@genkit-ai/next` | `^1.36.0` |
+| AI providers (opt-in) | `genkitx-ollama`, `@genkit-ai/compat-oai` | `^1.36.0` |
+| AI CLI (dev) | `genkit-cli` | `^1.36.0` |
+| Models | (config, not a package) | Default `googleai/gemini-2.5-flash`; TTS `gemini-2.5-flash-preview-tts` (voice `Algenib`); provider selected by `AI_PROVIDER` |
 | Validation | `zod` | `^3.24.2` |
 | Styling | `tailwindcss` | `^3.4.1` + `tailwindcss-animate`, `tailwind-merge`, `class-variance-authority`, `clsx` |
 | UI primitives | `@radix-ui/react-*` (accordion, dialog, select, toast, …) | see package.json |
@@ -70,8 +71,8 @@ npx create-next-app@15.3.3 proctoredai --typescript --tailwind --app --src-dir -
 cd proctoredai
 
 # AI runtime
-npm i genkit@^1.14.1 @genkit-ai/googleai@^1.14.1 @genkit-ai/next@^1.14.1 zod@^3.24.2 wav@^1.0.2 dotenv@^16.5.0
-npm i -D genkit-cli@^1.14.1 @types/wav@^1.0.4
+npm i genkit@^1.36.0 @genkit-ai/google-genai@^1.36.0 @genkit-ai/next@^1.36.0 genkitx-ollama@^1.36.0 @genkit-ai/compat-oai@^1.36.0 zod@^3.24.2 wav@^1.0.2 dotenv@^16.5.0
+npm i -D genkit-cli@^1.36.0 @types/wav@^1.0.4
 
 # UI: shadcn-ui (Radix + lucide). Init, then add the components used by the app.
 npx shadcn@latest init       # style: default, base color: neutral, CSS vars: yes
@@ -125,8 +126,12 @@ npm i lucide-react@^0.475.0 react-hook-form@^7.54.2 @hookform/resolvers@^4.1.3
 
 ```ts
 import {genkit} from 'genkit';
-import {googleAI} from '@genkit-ai/googleai';
+import {googleAI} from '@genkit-ai/google-genai';
 
+// Minimal default (Gemini). The shipped repo switches the plugin on AI_PROVIDER
+// (googleai | ollama | openrouter) and exports providerSupportsVision /
+// providerSupportsTTS capability flags — see the actual src/ai/genkit.ts and
+// ADR-0009 for the multi-provider version.
 export const ai = genkit({
   plugins: [googleAI()],
   model: 'googleai/gemini-2.5-flash',
@@ -182,8 +187,8 @@ Three live routes plus shared components. State crosses pages via **`sessionStor
 
 | Route | Role | Reads / writes |
 | --- | --- | --- |
-| `src/app/page.tsx` | Setup wizard: enter topic + name, gate on camera/mic permission, generate exam. | Calls `generateExamAction`; **writes** `sessionStorage.examData = { title, questions[] }`. |
-| `src/app/exam/page.tsx` | Exam runner + proctoring loop: per-question timer (**90s × #questions**), webcam sampling. | **Reads** `examData` (falls back to `src/lib/data.ts` sample if absent); proctor panel samples a frame **every 1500 ms** → `detectViolationsAction`; on submit **writes** `examResults = { questions, answers, violations[], title }`. |
+| `src/app/page.tsx` | Setup wizard: enter topic + name, then start **proctored** (grant camera/mic) or **unproctored** (camera opt-out), generate exam. | Calls `generateExamAction`; **writes** `sessionStorage.examData = { title, questions[] }` and `examConfig = { proctored }`. |
+| `src/app/exam/page.tsx` | Exam runner + (optional) proctoring loop: per-question timer (**90s × #questions**), webcam sampling when proctored. | **Reads** `examData`/`examConfig` (falls back to `src/lib/data.ts` sample if absent); when proctored, the panel samples a frame **every 1500 ms** → `detectViolationsAction`; on submit **writes** `examResults = { questions, answers, violations[], title, proctored }`. |
 | `src/app/results/page.tsx` | Grading report + voice AI tutor. | **Reads** `examResults`; calls `gradeExamAction` + `summarizeAlertsAction`; tutor chat → `clarifyDoubtAction` + `textToSpeechAction`. |
 
 **Key components** (`src/components/`): `proctoring-panel.tsx` (hidden `<canvas>` → JPEG data URI sampling loop — [ADR-0004](adr/0004-webcam-frame-sampling-proctoring.md)), `floating-camera.tsx`, `exam-header.tsx` (timer), `question-display.tsx`, `chat-tutor.tsx` (tutor chat + audio playback). Plus `src/components/ui/*` (shadcn), `src/hooks/use-toast.ts`, `use-mobile.tsx`, `src/lib/utils.ts`.
@@ -195,7 +200,7 @@ Three live routes plus shared components. State crosses pages via **`sessionStor
 ```
 src/
   ai/
-    genkit.ts                 # Genkit init (gemini-2.5-flash)
+    genkit.ts                 # Genkit init + AI_PROVIDER selection (default gemini-2.5-flash)
     dev.ts                    # registers all flows for the dev inspector
     flows/
       generate-exam-questions.ts
@@ -245,8 +250,8 @@ analysis, grades the answers, and offers a voice-enabled AI tutor on a results p
 NO database — pass state between pages via sessionStorage.
 
 Stack (pin exactly): next@15.3.3, react@^18.3.1, typescript@^5, tailwindcss@^3.4.1 with
-shadcn-ui (Radix + lucide-react), and Genkit ^1.14.1 (genkit, @genkit-ai/googleai,
-@genkit-ai/next) on Google Gemini. Default model googleai/gemini-2.5-flash; TTS model
+shadcn-ui (Radix + lucide-react), and Genkit ^1.36.0 (genkit, @genkit-ai/google-genai,
+@genkit-ai/next) on Google Gemini by default. Default model googleai/gemini-2.5-flash; TTS model
 gemini-2.5-flash-preview-tts with prebuilt voice "Algenib" (convert returned PCM to WAV via
 the `wav` package). Validate all flow I/O with Zod. Dev server on port 9002
 (`next dev --turbopack -p 9002`). In next.config.ts set typescript.ignoreBuildErrors and
@@ -270,14 +275,16 @@ clarifyDoubtAction, textToSpeechAction). detectViolationsAction must swallow err
 []; textToSpeechAction returns "" on error; generateExamAction runs the question + session
 flows in parallel and requests 5 questions.
 
-Build three routes: / (setup wizard: topic + name, gate on camera/mic, store examData in
-sessionStorage), /exam (run the exam with a 90s-per-question timer; a proctoring panel that
-draws a webcam frame to a hidden canvas and POSTs a JPEG data URI to detectViolationsAction
-every 1500ms, logging violations; on submit store examResults in sessionStorage; fall back to
-a static sample exam if there's no session), and /results (read examResults, call
-gradeExamAction + summarizeAlertsAction, render the report, and a chat tutor that calls
-clarifyDoubtAction and plays textToSpeechAction audio). Use shadcn-ui components, the Inter
-font, and a clean blue/neutral theme via HSL CSS variables with dark-mode support.
+Build three routes: / (setup wizard: topic + name, then offer a proctored start (grant
+camera/mic) or an unproctored start (camera opt-out); store examData + examConfig{proctored} in
+sessionStorage), /exam (run the exam with a 90s-per-question timer; when proctored, a proctoring
+panel draws a webcam frame to a hidden canvas and POSTs a JPEG data URI to detectViolationsAction
+every 1500ms, logging violations; on submit store examResults{…, proctored} in sessionStorage;
+fall back to a static sample exam if there's no session), and /results (read examResults, call
+gradeExamAction + summarizeAlertsAction, render the report — labeling unproctored sessions — and a
+chat tutor that calls clarifyDoubtAction and plays textToSpeechAction audio, with a mute toggle and
+text-only fallback on providers without TTS). Use shadcn-ui components, the Inter font, and a clean
+blue/neutral theme via HSL CSS variables with dark-mode support.
 ```
 
 > When done, do **not** reintroduce `firebase`, `patch-package`, or the dead `submitted/page.tsx`,

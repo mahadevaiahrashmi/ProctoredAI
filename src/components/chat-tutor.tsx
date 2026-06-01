@@ -1,12 +1,12 @@
 "use client"
 
 import { useState, useRef, useEffect } from "react";
-import { Send, User, Bot, Loader2, Sparkles } from "lucide-react";
+import { Send, User, Bot, Loader2, Sparkles, Volume2, VolumeX } from "lucide-react";
 import { Button } from "./ui/button";
 import { Input } from "./ui/input";
 import { ScrollArea } from "./ui/scroll-area";
 import { Avatar, AvatarFallback } from "./ui/avatar";
-import { clarifyDoubtAction, textToSpeechAction } from "@/app/actions";
+import { clarifyDoubtAction, textToSpeechAction, getProviderCapabilitiesAction } from "@/app/actions";
 import { type ClarifyExamDoubtsInput } from "@/ai/flows/clarify-exam-doubts";
 import { cn } from "@/lib/utils";
 
@@ -24,8 +24,34 @@ export default function ChatTutor({ examContext }: ChatTutorProps) {
   const [input, setInput] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const [isSpeaking, setIsSpeaking] = useState(false);
+  const [voiceEnabled, setVoiceEnabled] = useState(true);
+  // null = not yet known; treat as available until told otherwise so the
+  // default Gemini path shows the control immediately.
+  const [ttsSupported, setTtsSupported] = useState<boolean | null>(null);
   const scrollAreaRef = useRef<HTMLDivElement>(null);
   const audioRef = useRef<HTMLAudioElement | null>(null);
+
+  // Hide the voice control on providers without TTS (e.g. Ollama/OpenRouter),
+  // where the tutor is text-only regardless of this toggle.
+  const voiceAvailable = ttsSupported !== false;
+
+  useEffect(() => {
+    getProviderCapabilitiesAction()
+      .then((caps) => setTtsSupported(caps.tts))
+      .catch(() => setTtsSupported(true));
+  }, []);
+
+  const toggleVoice = () => {
+    setVoiceEnabled((prev) => {
+      const next = !prev;
+      // Muting mid-sentence should stop the current playback immediately.
+      if (!next && audioRef.current) {
+        audioRef.current.pause();
+        audioRef.current.currentTime = 0;
+      }
+      return next;
+    });
+  };
 
 
   const handleSendMessage = async (e: React.FormEvent) => {
@@ -45,11 +71,12 @@ export default function ChatTutor({ examContext }: ChatTutorProps) {
       });
 
       setMessages(prev => [...prev, { role: 'model', content: response }]);
-      
-      // Convert response to speech
-      const audioDataUri = await textToSpeechAction(response);
-      if (audioDataUri) {
-        if (audioRef.current) {
+
+      // Convert response to speech only when the user hasn't muted the tutor
+      // (and the provider supports TTS at all).
+      if (voiceEnabled && voiceAvailable) {
+        const audioDataUri = await textToSpeechAction(response);
+        if (audioDataUri && audioRef.current) {
           audioRef.current.src = audioDataUri;
           audioRef.current.play().catch(console.error);
         }
@@ -150,6 +177,23 @@ export default function ChatTutor({ examContext }: ChatTutorProps) {
       </ScrollArea>
       <div className="p-4 border-t border-border/50">
         <form onSubmit={handleSendMessage} className="flex items-center gap-3">
+          {voiceAvailable && (
+            <Button
+              type="button"
+              variant="ghost"
+              size="icon"
+              onClick={toggleVoice}
+              aria-pressed={voiceEnabled}
+              aria-label={voiceEnabled ? "Mute spoken answers" : "Unmute spoken answers"}
+              title={voiceEnabled ? "Voice on — click to mute" : "Voice off — click to unmute"}
+              className="shrink-0"
+            >
+              {voiceEnabled ? <Volume2 /> : <VolumeX className="text-muted-foreground" />}
+              <span className="sr-only">
+                {voiceEnabled ? "Mute spoken answers" : "Unmute spoken answers"}
+              </span>
+            </Button>
+          )}
           <Input
             value={input}
             onChange={(e) => setInput(e.target.value)}

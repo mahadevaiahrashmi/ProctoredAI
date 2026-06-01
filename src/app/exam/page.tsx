@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
-import { ChevronLeft, ChevronRight, Send, PanelLeft } from "lucide-react";
+import { ChevronLeft, ChevronRight, Send, PanelLeft, VideoOff } from "lucide-react";
 
 import { type Question } from "@/ai/flows/generate-exam-questions";
 import { Button } from "@/components/ui/button";
@@ -39,6 +39,9 @@ export default function ExamPage() {
   const [currentQuestionIndex, setCurrentQuestionIndex] = useState(0);
   const [answers, setAnswers] = useState<Record<number, string | string[]>>({});
   const [violations, setViolations] = useState<string[]>([]);
+  // Whether this session is proctored. Set on the setup page; defaults to true
+  // for direct navigation. When false, the proctoring UI and camera are skipped.
+  const [proctored, setProctored] = useState(true);
 
   useEffect(() => {
     try {
@@ -53,6 +56,16 @@ export default function ExamPage() {
     } catch (error) {
       console.error("Failed to parse exam data from sessionStorage", error);
       setExamData(staticExamData);
+    }
+
+    try {
+      const configString = sessionStorage.getItem('examConfig');
+      if (configString) {
+        const { proctored: isProctored } = JSON.parse(configString);
+        setProctored(isProctored !== false);
+      }
+    } catch (error) {
+      console.error("Failed to parse exam config from sessionStorage", error);
     }
   }, []);
 
@@ -92,6 +105,7 @@ export default function ExamPage() {
       answers: answers,
       violations: violations, // Pass violations to the results page
       title: examData.title,
+      proctored: proctored, // Whether proctoring was active this session
     }));
     router.push(`/results`);
   };
@@ -103,27 +117,37 @@ export default function ExamPage() {
         totalQuestions={totalQuestions}
         onTimeUp={handleSubmit}
       >
-        <Sheet>
-          <SheetTrigger asChild>
-            <Button size="icon" variant="outline" className="lg:hidden">
-              <PanelLeft className="h-5 w-5" />
-              <span className="sr-only">Toggle Proctoring Panel</span>
-            </Button>
-          </SheetTrigger>
-          <SheetContent side="left" className="p-0 w-[350px] bg-background">
-            <SheetHeader className="p-4 border-b">
-                <SheetTitle className="sr-only">Proctoring</SheetTitle>
-            </SheetHeader>
-            <ProctoringPanel violations={violations} setViolations={setViolations} />
-          </SheetContent>
-        </Sheet>
+        {proctored && (
+          <Sheet>
+            <SheetTrigger asChild>
+              <Button size="icon" variant="outline" className="lg:hidden">
+                <PanelLeft className="h-5 w-5" />
+                <span className="sr-only">Toggle Proctoring Panel</span>
+              </Button>
+            </SheetTrigger>
+            <SheetContent side="left" className="p-0 w-[350px] bg-background">
+              <SheetHeader className="p-4 border-b">
+                  <SheetTitle className="sr-only">Proctoring</SheetTitle>
+              </SheetHeader>
+              <ProctoringPanel violations={violations} setViolations={setViolations} />
+            </SheetContent>
+          </Sheet>
+        )}
       </ExamHeader>
       <div className="flex flex-1 overflow-hidden">
         <main className="flex flex-1 flex-col p-4 md:p-6 lg:p-8">
           <div className="flex h-full flex-col">
-            <div className="lg:hidden">
-              <FloatingCamera />
-            </div>
+            {proctored && (
+              <div className="lg:hidden">
+                <FloatingCamera />
+              </div>
+            )}
+            {!proctored && (
+              <div className="lg:hidden mb-4 flex items-center gap-2 rounded-md border border-dashed bg-muted/50 p-3 text-sm text-muted-foreground">
+                <VideoOff className="h-4 w-4 shrink-0" />
+                <span>Unproctored session &mdash; camera monitoring is off.</span>
+              </div>
+            )}
 
             <div className="flex h-full flex-col rounded-xl border bg-card text-card-foreground shadow-lg">
               <div className="p-6">
@@ -184,9 +208,22 @@ export default function ExamPage() {
             </div>
           </div>
         </main>
-        <aside className="hidden w-[400px] flex-col border-l bg-card p-4 lg:flex">
-          <ProctoringPanel violations={violations} setViolations={setViolations} />
-        </aside>
+        {proctored ? (
+          <aside className="hidden w-[400px] flex-col border-l bg-card p-4 lg:flex">
+            <ProctoringPanel violations={violations} setViolations={setViolations} />
+          </aside>
+        ) : (
+          <aside className="hidden w-[400px] flex-col border-l bg-card p-6 lg:flex">
+            <div className="flex flex-col items-center gap-3 rounded-lg border border-dashed p-6 text-center text-muted-foreground">
+              <VideoOff className="h-8 w-8" />
+              <h3 className="font-semibold text-foreground">Unproctored Session</h3>
+              <p className="text-sm">
+                Camera monitoring is off for this exam. Your results will be
+                labeled as taken without proctoring.
+              </p>
+            </div>
+          </aside>
+        )}
       </div>
     </div>
   );

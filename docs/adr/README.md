@@ -34,6 +34,7 @@ hybrid — see [`0000-template.md`](0000-template.md).
 | [0006](0006-firebase-app-hosting.md) | Deploy on Firebase App Hosting | Accepted | TD-018 |
 | [0007](0007-suppress-build-type-lint-errors.md) | Suppress TypeScript/ESLint errors during build | Superseded by [0008](0008-enforce-type-lint-ci.md) | TD-001 |
 | [0008](0008-enforce-type-lint-ci.md) | Enforce TypeScript & ESLint in CI and the build | Accepted | TD-001, TD-002 |
+| [0009](0009-pluggable-ai-providers-and-camera-opt-out.md) | Pluggable AI providers + optional (camera opt-out) proctoring | Accepted | TD-003, TD-019, TD-020 |
 
 ## How to add a new ADR
 1. Copy `0000-template.md` to `NNNN-short-title.md` (next number, kebab-case title).

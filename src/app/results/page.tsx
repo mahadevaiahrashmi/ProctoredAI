@@ -2,7 +2,7 @@
 
 import { useEffect, useState, Suspense } from 'react';
 import Link from 'next/link';
-import { Home, AlertTriangle, CheckCircle, Loader2, Award, FileText, BarChart, Percent, XCircle, Bot } from 'lucide-react';
+import { Home, AlertTriangle, CheckCircle, Loader2, Award, FileText, BarChart, Percent, XCircle, Bot, VideoOff } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import {
   Card,
@@ -25,6 +25,7 @@ function ResultsContent() {
     answers: Record<number, string | string[]>;
     violations: string[];
     title: string;
+    proctored?: boolean;
   } | null>(null);
   const [gradingReport, setGradingReport] = useState<GradeExamOutput | null>(null);
   const [violationSummary, setViolationSummary] = useState<string>("");
@@ -77,6 +78,8 @@ function ResultsContent() {
   }, [examResults]);
 
   const hasViolations = examResults?.violations && examResults.violations.length > 0;
+  // Sessions saved before this flag existed are treated as proctored.
+  const isProctored = examResults?.proctored !== false;
 
   const renderLoadingState = () => (
     <div className="flex min-h-screen items-center justify-center bg-background p-4">
@@ -154,6 +157,13 @@ function ResultsContent() {
             <CardDescription className="text-lg">
                 Here&apos;s a detailed breakdown of your performance.
             </CardDescription>
+            {!isProctored && (
+                <div className="mt-3 flex justify-center">
+                    <span className="inline-flex items-center gap-1.5 rounded-full border border-amber-500/40 bg-amber-500/10 px-3 py-1 text-sm font-medium text-amber-700 dark:text-amber-400">
+                        <VideoOff className="h-4 w-4" /> Unproctored session
+                    </span>
+                </div>
+            )}
             </CardHeader>
             <CardContent className="space-y-8 p-8">
                 {/* Overall Score & Summary */}
@@ -209,7 +219,23 @@ function ResultsContent() {
 
             </CardContent>
             {/* Proctoring Summary */}
-            {hasViolations && (
+            {!isProctored ? (
+            <CardContent className="px-8 pb-8">
+                <Card className="bg-muted/40">
+                    <CardHeader>
+                        <CardTitle className="flex items-center gap-3">
+                            <VideoOff />
+                            Unproctored Session
+                        </CardTitle>
+                        <CardDescription className="pt-2">
+                            This exam was taken without camera proctoring, so no
+                            integrity monitoring was performed. These results are
+                            not suitable for high-stakes or credential-bearing use.
+                        </CardDescription>
+                    </CardHeader>
+                </Card>
+            </CardContent>
+            ) : hasViolations ? (
             <CardContent className="px-8 pb-8">
                 <Card className="bg-destructive/5 border-destructive/50">
                     <CardHeader>
@@ -236,7 +262,7 @@ function ResultsContent() {
                     </CardContent>
                 </Card>
             </CardContent>
-            )}
+            ) : null}
         </Card>
         
         {/* AI Tutor Chat */}

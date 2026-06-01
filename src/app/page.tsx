@@ -12,6 +12,8 @@ import {
   ChevronRight,
   FileText,
   User,
+  VideoOff,
+  ShieldAlert,
 } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
@@ -25,7 +27,7 @@ import {
 } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
-import { generateExamAction } from "./actions";
+import { generateExamAction, getProviderCapabilitiesAction } from "./actions";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 
@@ -45,6 +47,26 @@ export default function ExamInitiationPage() {
     useState<PermissionState>("prompt");
   const [micPermission, setMicPermission] =
     useState<PermissionState>("prompt");
+
+  // Whether the active AI provider can analyze webcam frames. When false (e.g.
+  // a text-only Ollama model), proctoring is impossible and only the
+  // unproctored path is offered. `null` while the capability check is in flight.
+  const [visionSupported, setVisionSupported] = useState<boolean | null>(null);
+
+  useEffect(() => {
+    getProviderCapabilitiesAction()
+      .then(caps => setVisionSupported(caps.vision))
+      .catch(() => setVisionSupported(true)); // assume capable if the check fails
+  }, []);
+
+  // Record whether this session is proctored, then proceed to the exam.
+  const startExam = useCallback(
+    (proctored: boolean) => {
+      sessionStorage.setItem("examConfig", JSON.stringify({ proctored }));
+      router.push("/exam");
+    },
+    [router]
+  );
 
   const handleGenerateExam = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -92,13 +114,17 @@ export default function ExamInitiationPage() {
   }, []);
 
   useEffect(() => {
-    if (step === 2) {
+    // Only ask for camera/mic when proctoring is actually available for the
+    // active provider. On text-only providers we go straight to unproctored.
+    if (step === 2 && visionSupported) {
       requestPermissions();
     }
-  }, [step, requestPermissions]);
+  }, [step, visionSupported, requestPermissions]);
 
   const allPermissionsGranted =
     cameraPermission === "granted" && micPermission === "granted";
+  const permissionsDenied =
+    cameraPermission === "denied" || micPermission === "denied";
 
   return (
     <div className="flex min-h-screen w-full items-center justify-center bg-background p-4 sm:p-6 lg:p-8">
@@ -165,7 +191,22 @@ export default function ExamInitiationPage() {
               </div>
             )}
 
-            {step === 2 && (
+            {step === 2 && visionSupported === false && (
+              <div className="space-y-4">
+                <h3 className="font-semibold text-lg text-center">System Check</h3>
+                <Alert>
+                  <ShieldAlert className="h-5 w-5" />
+                  <AlertTitle>Proctoring unavailable</AlertTitle>
+                  <AlertDescription>
+                    The configured AI provider cannot analyze webcam video, so
+                    this exam will run <strong>unproctored</strong>. Your results
+                    will be clearly labeled as taken without proctoring.
+                  </AlertDescription>
+                </Alert>
+              </div>
+            )}
+
+            {step === 2 && visionSupported !== false && (
               <div className="space-y-4">
                 <h3 className="font-semibold text-lg text-center">System Check</h3>
                 <p className="text-muted-foreground text-center">
@@ -191,11 +232,15 @@ export default function ExamInitiationPage() {
                     {micPermission === "denied" && <XCircle className="h-5 w-5 text-destructive" />}
                   </li>
                 </ul>
-                {cameraPermission === "denied" || micPermission === "denied" ? (
-                  <Alert variant="destructive">
-                    <AlertTitle>Permissions Required</AlertTitle>
+                {permissionsDenied ? (
+                  <Alert>
+                    <ShieldAlert className="h-5 w-5" />
+                    <AlertTitle>Camera/microphone blocked</AlertTitle>
                     <AlertDescription>
-                      You must grant both camera and microphone permissions to start the exam. Please enable them in your browser settings and refresh the page.
+                      Proctoring needs both permissions. Enable them in your
+                      browser settings and refresh, or continue without
+                      proctoring &mdash; your results will be labeled as
+                      unproctored.
                     </AlertDescription>
                   </Alert>
                 ) : null}
@@ -237,15 +282,36 @@ export default function ExamInitiationPage() {
                 )}
               </Button>
             )}
-            {step === 2 && (
+            {step === 2 && visionSupported === false && (
               <Button
                 size="lg"
                 className="w-full"
-                onClick={() => router.push("/exam")}
-                disabled={!allPermissionsGranted}
+                onClick={() => startExam(false)}
               >
-                {allPermissionsGranted ? "Start Exam" : "Waiting for Permissions..."}
+                <VideoOff /> Start Unproctored Exam
               </Button>
+            )}
+            {step === 2 && visionSupported !== false && (
+              <div className="flex w-full flex-col gap-3">
+                <Button
+                  size="lg"
+                  className="w-full"
+                  onClick={() => startExam(true)}
+                  disabled={!allPermissionsGranted}
+                >
+                  {allPermissionsGranted
+                    ? "Start Proctored Exam"
+                    : "Waiting for Permissions..."}
+                </Button>
+                <Button
+                  size="lg"
+                  variant="outline"
+                  className="w-full"
+                  onClick={() => startExam(false)}
+                >
+                  <VideoOff /> Take Without Camera (Unproctored)
+                </Button>
+              </div>
             )}
           </CardFooter>
         </Card>
