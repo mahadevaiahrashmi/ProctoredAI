@@ -57,6 +57,7 @@ Exact versions from `package.json` (Node **20**, npm 9+). Pin these to reproduce
 | Charts | `recharts` | `^2.15.1` |
 | Audio | `wav` (+ `@types/wav`) | `^1.0.2` |
 | Env | `dotenv` | `^16.5.0` |
+| Test (dev) | `vitest`, `@vitejs/plugin-react`, `jsdom`, `@testing-library/react` / `dom` / `jest-dom` / `user-event` | see package.json |
 
 **Present but not load-bearing — do not re-add on a clean rebuild:** `firebase` (unused — [TD-013](tech_debt.md)), `patch-package` (no patches — [TD-016](tech_debt.md)). Several shadcn deps (`embla-carousel-react`, `react-day-picker`) back UI components the app does not actually use.
 
@@ -93,7 +94,9 @@ npm i lucide-react@^0.475.0 react-hook-form@^7.54.2 @hookform/resolvers@^4.1.3
 "build": "next build",
 "start": "next start",
 "lint": "next lint",
-"typecheck": "tsc --noEmit"
+"typecheck": "tsc --noEmit",
+"test": "vitest run",
+"test:watch": "vitest"
 ```
 
 > Dev server runs on **port 9002** (not 3000). `typecheck`/`lint` are **separate** commands for fast feedback, but the build now enforces both too ([ADR-0008](adr/0008-enforce-type-lint-ci.md)).
@@ -111,7 +114,8 @@ npm i lucide-react@^0.475.0 react-hook-form@^7.54.2 @hookform/resolvers@^4.1.3
 - `components.json` — shadcn config: `style: default`, `rsc: true`, `baseColor: neutral`, CSS vars on, aliases `@/components`, `@/lib`, `@/hooks`, `@/components/ui`, icon library `lucide`.
 - `tsconfig.json` — `@/*` path alias to `src/*`.
 - `.eslintrc.json` — extends `next/core-web-vitals`; used by `npm run lint` and the build.
-- `.github/workflows/ci.yml` — CI: `npm ci` → `npm run typecheck` → `npm run lint` on push/PR to `main` (Node 20) — [ADR-0008](adr/0008-enforce-type-lint-ci.md).
+- `vitest.config.ts` + `src/test/setup.ts` — Vitest (jsdom env, `@` alias, jest-dom matchers + Radix/jsdom shims); test files co-located as `src/**/*.test.{ts,tsx}` ([testing.md](testing.md)).
+- `.github/workflows/ci.yml` — CI: `npm ci` → `npm run typecheck` → `npm run lint` → `npm test` on push/PR to `main` (Node 20) — [ADR-0008](adr/0008-enforce-type-lint-ci.md).
 - `apphosting.yaml` — Firebase App Hosting: `runConfig.maxInstances: 1` (raise to scale — [ADR-0006](adr/0006-firebase-app-hosting.md), [TD-018](tech_debt.md)).
 - `.env` from [.env.example](../.env.example) — set `GEMINI_API_KEY` (or `GOOGLE_API_KEY`).
 
@@ -214,17 +218,20 @@ src/
     ui/*                      # shadcn components
   hooks/  use-toast.ts  use-mobile.tsx
   lib/   utils.ts  data.ts (fallback exam)  placeholder-images.{ts,json}
+  test/  setup.ts                  # jest-dom matchers + Radix/jsdom shims
+  **/*.test.{ts,tsx}              # co-located unit/component tests (Vitest + RTL)
 # root config
 next.config.ts  tailwind.config.ts  postcss.config.mjs  components.json
 tsconfig.json  apphosting.yaml  package.json  .env(.example)
-.eslintrc.json  .github/workflows/ci.yml
+.eslintrc.json  vitest.config.ts  .github/workflows/ci.yml
 ```
 
 ## 9. Verify the rebuild
 
 1. `npm run typecheck` — the build **also** enforces this now ([ADR-0008](adr/0008-enforce-type-lint-ci.md)), but run it directly for fast feedback.
 2. `npm run lint`.
-3. `npm run dev` → open http://localhost:9002. Optional: `npm run genkit:dev` to inspect flows.
+3. `npm test` — Vitest unit/component suite (also runs in CI).
+4. `npm run dev` → open http://localhost:9002. Optional: `npm run genkit:dev` to inspect flows.
 4. **Smoke test the golden path** (see [UAT.md](UAT.md) for full cases): enter a topic + name → grant camera/mic → take the 5-question exam (watch the proctoring panel log a violation when you hold up a phone) → submit → confirm a score + per-question feedback render → ask the tutor a question and confirm a spoken reply.
 
 ## 10. Master build prompt

@@ -1,7 +1,8 @@
 name: CI
 
-# Type and lint safety net. The Next.js build is configured to ignore type/lint
-# errors (next.config.ts, ADR-0007), so these checks run here as the real gate.
+# Quality gates that mirror the build's enforcement (next.config.ts now fails on
+# type/lint errors — ADR-0008): typecheck, lint, and the Vitest unit/integration
+# suite, run on every push and pull request to main.
 on:
   push:
     branches: [main]
@@ -10,7 +11,7 @@ on:
 
 jobs:
   quality:
-    name: Typecheck & Lint
+    name: Typecheck, Lint & Test
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
@@ -30,3 +31,6 @@ jobs:
 
       - name: Lint
         run: npm run lint
+
+      - name: Test
+        run: npm test

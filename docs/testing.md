@@ -1,10 +1,11 @@
 # Testing Strategy — ProctoredAI
 
-> **Current state:** the repository has **no automated tests** and no test runner
-> configured. CI **does** exist (`.github/workflows/ci.yml`) but only runs `typecheck` +
-> `lint`, and the build enforces both ([ADR-0008](adr/0008-enforce-type-lint-ci.md)). This
-> document defines the target strategy: the test pyramid, conventions, what to mock, and the
-> test/E2E steps to add to CI. Items marked _(to add)_ do not exist yet.
+> **Current state:** **Vitest + React Testing Library are set up** with an initial
+> unit/component suite (`src/**/*.test.{ts,tsx}`), run in CI via `npm test` alongside
+> `typecheck` + `lint` (`.github/workflows/ci.yml`); the build also enforces type/lint
+> ([ADR-0008](adr/0008-enforce-type-lint-ci.md)). **Still to add:** broader integration
+> coverage and the **E2E (Playwright)** layer. This document defines the full target strategy —
+> the test pyramid, conventions, and what to mock. Items marked _(to add)_ do not exist yet.
 
 ---
 
@@ -27,7 +28,13 @@
             ╱__________╲  pure logic + flow schemas
 ```
 
-### 2.1 Unit tests _(to add)_ — most numerous
+> **Implemented so far** (Vitest + RTL): `src/lib/utils.test.ts` (`cn`),
+> `src/components/question-display.test.tsx` (MC/text rendering + answer callback),
+> `src/components/exam-header.test.tsx` (timer formatting, color threshold, countdown,
+> time-up boundary), and `src/ai/flows/summarize-proctoring-alerts.test.ts` (empty-alerts
+> short-circuit, model not called). The lists below are the **target** coverage to grow into.
+
+### 2.1 Unit tests _(partially implemented)_ — most numerous
 Target the pure, synchronous logic and the flow contracts:
 - **Flow schemas / shaping:** `summarize-proctoring-alerts` empty-list short-circuit; `clarify-exam-doubts` prompt assembly (`userAnswers`/feedback lookup, "Not Answered" fallback); `text-to-speech` `toWav` PCM→WAV conversion (feed a known PCM buffer, assert WAV header).
 - **Timer math:** `exam-header` duration = `90 × #questions`, `MM:SS` formatting, red threshold at `< 300s`.
@@ -51,7 +58,7 @@ Run the real app with **Playwright**, stubbing network calls to Gemini (or point
 
 ---
 
-## 3. Recommended tooling _(to add)_
+## 3. Tooling
 | Concern | Tool | Why |
 | --- | --- | --- |
 | Unit/integration runner | **Vitest** | Fast, native ESM/TS, Jest-compatible API; pairs well with Next 15. |
@@ -60,8 +67,9 @@ Run the real app with **Playwright**, stubbing network calls to Gemini (or point
 | Action/flow mocking | `vi.mock('@/app/actions')` | Keep tests deterministic and offline. |
 | Coverage | Vitest `--coverage` (v8) | Track and gate coverage. |
 
-> Add the runner config and a `test` script to `package.json` (e.g. `"test": "vitest"`,
-> `"test:e2e": "playwright test"`). These are not present today.
+> **Installed:** Vitest, `@vitejs/plugin-react`, jsdom, and `@testing-library/react` /
+> `user-event` / `jest-dom`, wired via `vitest.config.ts` + `src/test/setup.ts` with a `test`
+> script (`vitest run`). **Not yet:** Playwright (`test:e2e`) and coverage gating.
 
 ---
 
@@ -85,9 +93,9 @@ Run the real app with **Playwright**, stubbing network calls to Gemini (or point
 ## 6. Continuous integration
 
 CI **exists today** at `.github/workflows/ci.yml`: on every push/PR to `main` it runs
-`npm ci` → `npm run typecheck` → `npm run lint` (Node 20) — see
-[ADR-0008](adr/0008-enforce-type-lint-ci.md). It does **not** yet run tests, `build`, or E2E.
-The recommended **target** pipeline that adds those steps:
+`npm ci` → `npm run typecheck` → `npm run lint` → `npm test` (Vitest, Node 20) — see
+[ADR-0008](adr/0008-enforce-type-lint-ci.md). It does **not** yet run `build` or E2E.
+The recommended **target** pipeline that adds those remaining steps:
 
 ```yaml
 name: CI
@@ -104,7 +112,7 @@ jobs:
       - run: npm ci
       - run: npm run lint        # also enforced by the build
       - run: npm run typecheck    # also enforced by the build
-      - run: npm test -- --run    # unit + integration (Vitest), once configured
+      - run: npm test            # unit + component (Vitest)
       - run: npm run build
   e2e:
     runs-on: ubuntu-latest
@@ -118,10 +126,10 @@ jobs:
       - run: npm run test:e2e
 ```
 
-**CI gates (must pass to merge):** `lint`, `typecheck` (both live today), then — once added —
-unit+integration, `build`, and E2E. Type/lint safety is now enforced in **two** places: the
-build fails on errors (`ignoreBuildErrors`/`ignoreDuringBuilds` are `false`) **and** CI
-re-checks them, so a regression can't slip through either gate.
+**CI gates (must pass to merge):** `lint`, `typecheck`, and `npm test` (all live today), then —
+once added — `build` and E2E. Type/lint safety is enforced in **two** places: the build fails
+on errors (`ignoreBuildErrors`/`ignoreDuringBuilds` are `false`) **and** CI re-checks them, so a
+regression can't slip through either gate.
 
 > **Secrets:** keep `GEMINI_API_KEY` out of CI for unit/integration/E2E by mocking the
 > model. If you ever add a small live-smoke job, store the key as an encrypted Actions secret
