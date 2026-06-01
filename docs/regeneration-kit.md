@@ -45,6 +45,7 @@ Exact versions from `package.json` (Node **20**, npm 9+). Pin these to reproduce
 | Framework | `next` | `15.3.3` |
 | React | `react`, `react-dom` | `^18.3.1` |
 | Language | `typescript` | `^5` |
+| Lint | `eslint`, `eslint-config-next` | `^8.57.1`, `^15.3.3` |
 | AI runtime | `genkit`, `@genkit-ai/googleai`, `@genkit-ai/next` | `^1.14.1` |
 | AI CLI (dev) | `genkit-cli` | `^1.14.1` |
 | Models | (config, not a package) | `googleai/gemini-2.5-flash`; TTS `gemini-2.5-flash-preview-tts` (voice `Algenib`) |
@@ -80,7 +81,7 @@ npm i lucide-react@^0.475.0 react-hook-form@^7.54.2 @hookform/resolvers@^4.1.3
 
 ### 4.2 `next.config.ts` — preserve these intentional choices
 
-- `typescript.ignoreBuildErrors: true` and `eslint.ignoreDuringBuilds: true` — build does **not** gate on types/lint (intentional; see [ADR-0007](adr/0007-suppress-build-type-lint-errors.md), [TD-001](tech_debt.md)). Enforce safety via `npm run typecheck` / `npm run lint` instead.
+- `typescript.ignoreBuildErrors: false` and `eslint.ignoreDuringBuilds: false` — `next build` **fails** on type or lint errors (enforced; see [ADR-0008](adr/0008-enforce-type-lint-ci.md), which superseded [ADR-0007](adr/0007-suppress-build-type-lint-errors.md), and [TD-001](tech_debt.md), resolved). CI re-checks both via `npm run typecheck` / `npm run lint`.
 - `images.remotePatterns` allow-lists `placehold.co`, `images.unsplash.com`, `picsum.photos`.
 
 ### 4.3 `package.json` scripts
@@ -95,7 +96,7 @@ npm i lucide-react@^0.475.0 react-hook-form@^7.54.2 @hookform/resolvers@^4.1.3
 "typecheck": "tsc --noEmit"
 ```
 
-> Dev server runs on **port 9002** (not 3000). Type checking is a **separate** command because the build ignores type errors.
+> Dev server runs on **port 9002** (not 3000). `typecheck`/`lint` are **separate** commands for fast feedback, but the build now enforces both too ([ADR-0008](adr/0008-enforce-type-lint-ci.md)).
 
 ### 4.4 Theme (Tailwind + tokens)
 
@@ -109,6 +110,8 @@ npm i lucide-react@^0.475.0 react-hook-form@^7.54.2 @hookform/resolvers@^4.1.3
 
 - `components.json` — shadcn config: `style: default`, `rsc: true`, `baseColor: neutral`, CSS vars on, aliases `@/components`, `@/lib`, `@/hooks`, `@/components/ui`, icon library `lucide`.
 - `tsconfig.json` — `@/*` path alias to `src/*`.
+- `.eslintrc.json` — extends `next/core-web-vitals`; used by `npm run lint` and the build.
+- `.github/workflows/ci.yml` — CI: `npm ci` → `npm run typecheck` → `npm run lint` on push/PR to `main` (Node 20) — [ADR-0008](adr/0008-enforce-type-lint-ci.md).
 - `apphosting.yaml` — Firebase App Hosting: `runConfig.maxInstances: 1` (raise to scale — [ADR-0006](adr/0006-firebase-app-hosting.md), [TD-018](tech_debt.md)).
 - `.env` from [.env.example](../.env.example) — set `GEMINI_API_KEY` (or `GOOGLE_API_KEY`).
 
@@ -178,7 +181,6 @@ Three live routes plus shared components. State crosses pages via **`sessionStor
 | `src/app/page.tsx` | Setup wizard: enter topic + name, gate on camera/mic permission, generate exam. | Calls `generateExamAction`; **writes** `sessionStorage.examData = { title, questions[] }`. |
 | `src/app/exam/page.tsx` | Exam runner + proctoring loop: per-question timer (**90s × #questions**), webcam sampling. | **Reads** `examData` (falls back to `src/lib/data.ts` sample if absent); proctor panel samples a frame **every 1500 ms** → `detectViolationsAction`; on submit **writes** `examResults = { questions, answers, violations[], title }`. |
 | `src/app/results/page.tsx` | Grading report + voice AI tutor. | **Reads** `examResults`; calls `gradeExamAction` + `summarizeAlertsAction`; tutor chat → `clarifyDoubtAction` + `textToSpeechAction`. |
-| `src/app/submitted/page.tsx` | **Dead route** — not in the flow. Remove on rebuild ([TD-014](tech_debt.md)). | — |
 
 **Key components** (`src/components/`): `proctoring-panel.tsx` (hidden `<canvas>` → JPEG data URI sampling loop — [ADR-0004](adr/0004-webcam-frame-sampling-proctoring.md)), `floating-camera.tsx`, `exam-header.tsx` (timer), `question-display.tsx`, `chat-tutor.tsx` (tutor chat + audio playback). Plus `src/components/ui/*` (shadcn), `src/hooks/use-toast.ts`, `use-mobile.tsx`, `src/lib/utils.ts`.
 
@@ -206,7 +208,6 @@ src/
     actions.ts                # 6 Server Actions (UI ↔ AI seam)
     exam/page.tsx             # exam runner + proctoring
     results/page.tsx          # grading report + tutor
-    submitted/page.tsx        # DEAD (TD-014)
   components/
     proctoring-panel.tsx  floating-camera.tsx  exam-header.tsx
     question-display.tsx  chat-tutor.tsx
@@ -216,11 +217,12 @@ src/
 # root config
 next.config.ts  tailwind.config.ts  postcss.config.mjs  components.json
 tsconfig.json  apphosting.yaml  package.json  .env(.example)
+.eslintrc.json  .github/workflows/ci.yml
 ```
 
 ## 9. Verify the rebuild
 
-1. `npm run typecheck` — **the build won't catch type errors**, so this is the real gate ([ADR-0007](adr/0007-suppress-build-type-lint-errors.md)).
+1. `npm run typecheck` — the build **also** enforces this now ([ADR-0008](adr/0008-enforce-type-lint-ci.md)), but run it directly for fast feedback.
 2. `npm run lint`.
 3. `npm run dev` → open http://localhost:9002. Optional: `npm run genkit:dev` to inspect flows.
 4. **Smoke test the golden path** (see [UAT.md](UAT.md) for full cases): enter a topic + name → grant camera/mic → take the 5-question exam (watch the proctoring panel log a violation when you hold up a phone) → submit → confirm a score + per-question feedback render → ask the tutor a question and confirm a spoken reply.
@@ -241,7 +243,9 @@ shadcn-ui (Radix + lucide-react), and Genkit ^1.14.1 (genkit, @genkit-ai/googlea
 gemini-2.5-flash-preview-tts with prebuilt voice "Algenib" (convert returned PCM to WAV via
 the `wav` package). Validate all flow I/O with Zod. Dev server on port 9002
 (`next dev --turbopack -p 9002`). In next.config.ts set typescript.ignoreBuildErrors and
-eslint.ignoreDuringBuilds to true, and gate quality via separate `typecheck`/`lint` scripts.
+eslint.ignoreDuringBuilds to false so the build fails on type/lint errors; add an
+.eslintrc.json extending next/core-web-vitals and a .github/workflows/ci.yml that runs
+`typecheck` + `lint` on push/PR.
 
 Create src/ai/genkit.ts (Genkit init) and 7 Genkit flows under src/ai/flows/, each a
 'use server' module with Zod schemas, defining exactly these contracts:

@@ -23,8 +23,7 @@ them. Update this file as part of any PR that adds or pays down debt.
 
 | ID | Title | Severity | Effort | Area | Description & impact | Suggested remediation |
 | --- | --- | --- | --- | --- | --- | --- |
-| TD-001 | Build ignores type & lint errors | **High** | S | Build/CI | `next.config.ts` sets `typescript.ignoreBuildErrors` and `eslint.ignoreDuringBuilds` to `true`, so `npm run build` is green even with real TS/lint errors. Regressions can ship. | Add CI gates running `typecheck` + `lint` (see [testing.md](testing.md)); flip the flags off once the codebase is clean. |
-| TD-002 | No automated tests or CI | **High** | L | Quality | Zero tests and no CI workflow; every change is validated by hand. | Stand up Vitest + RTL + Playwright and a GitHub Actions pipeline per [testing.md](testing.md). |
+| TD-002 | No automated tests | **High** | L | Quality | CI now runs `typecheck` + `lint` (`.github/workflows/ci.yml`), but there are still **zero automated tests** — behavior is validated by hand. | Stand up Vitest + RTL + Playwright on the existing CI pipeline per [testing.md](testing.md). |
 | TD-003 | Webcam frames sent to third party with no consent/retention policy | **High** | M | Privacy/Legal | A JPEG of the user is POSTed to Gemini every ~1.5s with no consent record, retention statement, or opt-out. | Add an explicit consent step + privacy notice; document retention; consider configurable cadence and on-device pre-filtering. |
 | TD-004 | No persistence — session-only state | **Medium** | L | Architecture | Exam + results live only in `sessionStorage`; refresh/new tab loses everything and there's no history or audit trail. | Introduce a backend store (e.g. Firestore) if history/audit is needed; otherwise document the limitation prominently. |
 | TD-005 | Camera streams never stopped on unmount | **Medium** | S | Resource leak | `proctoring-panel.tsx` and `floating-camera.tsx` acquire `getUserMedia` streams but their effects have no cleanup, so tracks keep running; multiple components can open the camera simultaneously. | Return a cleanup that calls `stream.getTracks().forEach(t => t.stop())`; share one stream via context. |
@@ -36,7 +35,6 @@ them. Update this file as part of any PR that adds or pays down debt.
 | TD-011 | Hard-coded question count | **Low** | S | Flexibility | `generateExamAction` always requests 5 questions though the flow supports 1–10; not user-configurable. | Expose count (and ideally time limit) as a setup option. |
 | TD-012 | Errors swallowed in proctoring action | **Low** | S | Observability | `detectViolationsAction` returns `[]` on any error, hiding API failures from users and telemetry. | Surface a non-blocking status and log failures to real observability (TD-015). |
 | TD-013 | Unused `firebase` dependency | **Low** | S | Bloat | `firebase` is installed and emulators are configured, but no app code uses it. | Remove the dependency (and emulator config) unless persistence is planned (TD-004). |
-| TD-014 | Dead route `submitted/page.tsx` | **Low** | S | Cleanup | File is a comment-only placeholder ("no longer used"). | Delete the route. |
 | TD-015 | No observability | **Medium** | M | Ops | Only `console.error`; no structured logs, metrics, or tracing in production. | Wire Genkit telemetry + structured logging/metrics; track the success metrics in [PRD.md](PRD.md). |
 | TD-016 | `patch-package` with no patches | **Low** | S | Cleanup | Dependency present but there is no `patches/` directory or `postinstall` hook using it. | Remove `patch-package` or add the intended postinstall + patches. |
 | TD-017 | Accessibility gaps | **Medium** | M | A11y | Proctoring status relies on color; live updates aren't announced (no ARIA live region); spoken answers have no captions/transcript toggle beyond on-screen text. | Add non-color status cues, an ARIA live region for the log, and a mute/caption affordance. |
@@ -48,7 +46,8 @@ them. Update this file as part of any PR that adds or pays down debt.
 
 | ID | Title | Severity | Resolved on | Resolved by | Notes / PR |
 | --- | --- | --- | --- | --- | --- |
-| — | _none yet_ | — | — | — | — |
+| TD-001 | Build ignores type & lint errors | High | 2026-06-01 | type/lint/CI hardening pass | Flipped `ignoreBuildErrors`/`ignoreDuringBuilds` to `false`; configured ESLint and added CI (`typecheck` + `lint`). See [ADR-0008](adr/0008-enforce-type-lint-ci.md). |
+| TD-014 | Dead route `submitted/page.tsx` | Low | 2026-06-01 | type/lint/CI hardening pass | Deleted the empty, comment-only non-module route (surfaced by the now-enforced build). |
 
 ---
 

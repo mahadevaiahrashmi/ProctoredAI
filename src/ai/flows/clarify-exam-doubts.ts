@@ -174,6 +174,6 @@ Based on all of this context, provide a helpful and relevant response to the use
         }
     });
 
-    return output;
+    return output!;
   }
 );

@@ -1,9 +1,14 @@
 # ADR-0007: Suppress TypeScript/ESLint errors during build
 
-- **Status:** Accepted (revisit)
+- **Status:** Superseded by [ADR-0008](0008-enforce-type-lint-ci.md) (2026-06-01)
 - **Date:** 2026-06-01
 - **Deciders:** Original author (recorded retroactively)
 - **Related:** [tech_debt TD-001](../tech_debt.md), [testing](../testing.md)
+
+> **Superseded:** the codebase was brought to zero type/lint errors, ESLint was configured, and
+> a CI workflow was added — so both flags were flipped to `false` and enforcement now happens in
+> the build and CI. See [ADR-0008](0008-enforce-type-lint-ci.md). The context below is retained
+> for history.
 
 ## Context
 

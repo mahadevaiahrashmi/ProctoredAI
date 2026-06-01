@@ -32,7 +32,8 @@ hybrid — see [`0000-template.md`](0000-template.md).
 | [0004](0004-webcam-frame-sampling-proctoring.md) | Periodic webcam frame sampling for proctoring | Accepted | TD-003, TD-005, TD-006 |
 | [0005](0005-llm-grading.md) | LLM grades both multiple-choice and free-text | Accepted | TD-010 |
 | [0006](0006-firebase-app-hosting.md) | Deploy on Firebase App Hosting | Accepted | TD-018 |
-| [0007](0007-suppress-build-type-lint-errors.md) | Suppress TypeScript/ESLint errors during build | Accepted (revisit) | TD-001 |
+| [0007](0007-suppress-build-type-lint-errors.md) | Suppress TypeScript/ESLint errors during build | Superseded by [0008](0008-enforce-type-lint-ci.md) | TD-001 |
+| [0008](0008-enforce-type-lint-ci.md) | Enforce TypeScript & ESLint in CI and the build | Accepted | TD-001, TD-002 |
 
 ## How to add a new ADR
 1. Copy `0000-template.md` to `NNNN-short-title.md` (next number, kebab-case title).

@@ -50,15 +50,16 @@ function ResultsContent() {
 
   useEffect(() => {
     if (!examResults) return;
+    const results = examResults;
 
     async function getReports() {
       try {
         setLoading(true);
         setError(null);
-        
+
         const [report, summary] = await Promise.all([
-          gradeExamAction(examResults.questions, examResults.answers),
-          summarizeAlertsAction(examResults.violations)
+          gradeExamAction(results.questions, results.answers),
+          summarizeAlertsAction(results.violations)
         ]);
         
         setGradingReport(report);
@@ -148,10 +149,10 @@ function ResultsContent() {
                 <Award className="h-12 w-12 text-primary" />
             </div>
             <CardTitle className="mt-4 text-3xl font-bold">
-                Exam Report for "{examResults.title}"
+                Exam Report for &quot;{examResults.title}&quot;
             </CardTitle>
             <CardDescription className="text-lg">
-                Here's a detailed breakdown of your performance.
+                Here&apos;s a detailed breakdown of your performance.
             </CardDescription>
             </CardHeader>
             <CardContent className="space-y-8 p-8">

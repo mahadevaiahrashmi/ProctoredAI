@@ -23,11 +23,11 @@ and documented under `docs/`. Start with [../README.md](../README.md) →
 
 ## 2. Current state (as of 2026-06-01)
 
-- **Code:** Functional app, unchanged from upstream. No tests, no CI.
+- **Code:** Functional app. A type/lint/CI hardening pass fixed a handful of type/lint errors, configured ESLint, added CI, and made the build enforce both ([ADR-0008](adr/0008-enforce-type-lint-ci.md)); **still no automated tests**.
 - **Docs:** Full suite added — README (with source credit), SETUP, requirements, `.env.example`, and `docs/` (PRD, product & system design, user manual, testing, UAT, tech debt, ADRs, this file, regeneration kit).
 - **Published:** `main` is on GitHub at **https://github.com/mahadevaiahrashmi/ProctoredAI** (public).
 - **Remotes:** `origin` → `mahadevaiahrashmi/ProctoredAI` (SSH); `upstream` → the original `abhinavrbharadwaj7/AI_test_propter`.
-- **Not done yet:** the highest-value open items are CI + tests and the privacy/consent work for proctoring (see §6).
+- **Not done yet:** the highest-value open items are automated tests (CI now runs `typecheck` + `lint`, but there are still no tests — TD-002) and the privacy/consent work for proctoring (see §6).
 
 ## 3. Rebuild the environment from scratch
 
@@ -82,11 +82,11 @@ Read order for a newcomer: [README](../README.md) → [system_design.md](system_
 
 Prioritized from [tech_debt.md](tech_debt.md) (IDs are stable references):
 
-1. **Add tests + CI** — TD-002, and gate `typecheck`/`lint` because the build ignores them (TD-001, [ADR-0007](adr/0007-suppress-build-type-lint-errors.md)). See [testing.md](testing.md) for the plan.
+1. **Add automated tests** — TD-002. CI already gates `typecheck`/`lint` and the build enforces both ([ADR-0008](adr/0008-enforce-type-lint-ci.md)); what's missing is a test runner + suites. See [testing.md](testing.md) for the plan.
 2. **Privacy/consent for proctoring** — TD-003: webcam frames go to Gemini every ~1.5s with no consent record. Highest-risk gap before any real use.
 3. **Fix proctoring hygiene** — stop camera streams on unmount (TD-005); de-duplicate the violation log (TD-006).
 4. **Decide on persistence/resumability** — TD-004 (see §4). Product call: is history/resume in scope?
-5. **Cleanup** — remove unused `firebase` (TD-013), dead `submitted/page.tsx` (TD-014), unused `definePrompt` in the tutor flow (TD-009), `patch-package` (TD-016).
+5. **Cleanup** — remove unused `firebase` (TD-013), unused `definePrompt` in the tutor flow (TD-009), `patch-package` (TD-016). (The dead `submitted/page.tsx` was already removed — TD-014.)
 
 ## 7. Resuming as an AI agent — checklist
 
@@ -94,7 +94,7 @@ Prioritized from [tech_debt.md](tech_debt.md) (IDs are stable references):
 2. Read this file, then [tech_debt.md](tech_debt.md) and [adr/README.md](adr/README.md) for state + rationale.
 3. Confirm the working directory: this project lives in its **own** git repo (`AI_test_propter/`). The parent folder is a *separate* repo — always scope git commands to the project with `git -C <path>` to avoid committing in the wrong place.
 4. For AI-behavior changes, edit the relevant `src/ai/flows/*` (each is the source of truth for its prompt) — note the tutor flow builds its prompt inline (TD-009).
-5. Before claiming a change works: `npm run typecheck` (build won't catch type errors) and, for UI, run `npm run dev` and exercise the flow.
+5. Before claiming a change works: `npm run typecheck` and `npm run lint` (the build now enforces both, but run them directly for fast feedback) and, for UI, run `npm run dev` and exercise the flow.
 6. Persist progress here (update §2 and §6) and via commits — don't rely on conversational memory.
 
 ## 8. Quick facts

@@ -1,8 +1,10 @@
 # Testing Strategy — ProctoredAI
 
 > **Current state:** the repository has **no automated tests** and no test runner
-> configured. This document defines the target strategy: the test pyramid, conventions,
-> what to mock, and the CI pipeline to put in place. Items marked _(to add)_ do not exist yet.
+> configured. CI **does** exist (`.github/workflows/ci.yml`) but only runs `typecheck` +
+> `lint`, and the build enforces both ([ADR-0008](adr/0008-enforce-type-lint-ci.md)). This
+> document defines the target strategy: the test pyramid, conventions, what to mock, and the
+> test/E2E steps to add to CI. Items marked _(to add)_ do not exist yet.
 
 ---
 
@@ -10,7 +12,7 @@
 - **Determinism first.** AI calls are non-deterministic; tests must **mock the Genkit flows / Gemini** at the boundary so suites are fast and repeatable. Never hit the live model in unit/integration tests.
 - **Test behavior, not implementation.** Assert on rendered output and user-visible state, not internal hooks.
 - **Cover the risky bits.** Permission gating, timer auto-submit, the proctoring loop, session handoff, and error/degrade paths are where bugs hurt most.
-- **Guard the build.** Because `next.config.ts` ignores type and lint errors during `build`, CI must run `typecheck` and `lint` as **independent, blocking** steps.
+- **Guard the build.** `next.config.ts` now **fails** `build` on type and lint errors, and CI runs `typecheck` and `lint` as **independent, blocking** steps ([ADR-0008](adr/0008-enforce-type-lint-ci.md)) — keep both green.
 
 ---
 
@@ -80,10 +82,12 @@ Run the real app with **Playwright**, stubbing network calls to Gemini (or point
 
 ---
 
-## 6. Continuous integration _(to add)_
+## 6. Continuous integration
 
-There is no CI workflow in the repo today. Recommended GitHub Actions pipeline
-(`.github/workflows/ci.yml`):
+CI **exists today** at `.github/workflows/ci.yml`: on every push/PR to `main` it runs
+`npm ci` → `npm run typecheck` → `npm run lint` (Node 20) — see
+[ADR-0008](adr/0008-enforce-type-lint-ci.md). It does **not** yet run tests, `build`, or E2E.
+The recommended **target** pipeline that adds those steps:
 
 ```yaml
 name: CI
@@ -98,8 +102,8 @@ jobs:
       - uses: actions/setup-node@v4
         with: { node-version: 20, cache: npm }
       - run: npm ci
-      - run: npm run lint        # build ignores lint — gate it here
-      - run: npm run typecheck    # build ignores TS errors — gate it here
+      - run: npm run lint        # also enforced by the build
+      - run: npm run typecheck    # also enforced by the build
       - run: npm test -- --run    # unit + integration (Vitest), once configured
       - run: npm run build
   e2e:
@@ -114,9 +118,10 @@ jobs:
       - run: npm run test:e2e
 ```
 
-**CI gates (must pass to merge):** `lint`, `typecheck`, unit+integration, `build`, then E2E.
-The `lint` and `typecheck` gates are non-negotiable precisely because the production build
-suppresses those errors (`ignoreDuringBuilds` / `ignoreBuildErrors`).
+**CI gates (must pass to merge):** `lint`, `typecheck` (both live today), then — once added —
+unit+integration, `build`, and E2E. Type/lint safety is now enforced in **two** places: the
+build fails on errors (`ignoreBuildErrors`/`ignoreDuringBuilds` are `false`) **and** CI
+re-checks them, so a regression can't slip through either gate.
 
 > **Secrets:** keep `GEMINI_API_KEY` out of CI for unit/integration/E2E by mocking the
 > model. If you ever add a small live-smoke job, store the key as an encrypted Actions secret

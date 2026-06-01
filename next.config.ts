@@ -1,12 +1,14 @@
 import type {NextConfig} from 'next';
 
 const nextConfig: NextConfig = {
-  /* config options here */
+  // Type and lint errors DO fail the build, kept in sync with CI
+  // (.github/workflows/ci.yml). These were `true` during early Firebase Studio
+  // iteration — see ADR-0007 (superseded) for the history.
   typescript: {
-    ignoreBuildErrors: true,
+    ignoreBuildErrors: false,
   },
   eslint: {
-    ignoreDuringBuilds: true,
+    ignoreDuringBuilds: false,
   },
   images: {
     remotePatterns: [
