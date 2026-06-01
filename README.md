@@ -52,6 +52,9 @@ See **[SETUP.md](SETUP.md)** for full prerequisites, scripts, and troubleshootin
 | [docs/testing.md](docs/testing.md) | Test strategy, conventions, CI |
 | [docs/UAT.md](docs/UAT.md) | User acceptance test plan and sign-off |
 | [docs/tech_debt.md](docs/tech_debt.md) | Known technical debt and tracking process |
+| [docs/adr/README.md](docs/adr/README.md) | Architecture Decision Records — why key choices were made |
+| [docs/resumability.md](docs/resumability.md) | Resumability & handoff guide — pick the project back up |
+| [docs/regeneration-kit.md](docs/regeneration-kit.md) | Regeneration kit — rebuild the code from scratch |
 | [docs/blueprint.md](docs/blueprint.md) | Original app blueprint (from the source repo) |
 
 ## Tech stack

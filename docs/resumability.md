@@ -1,0 +1,110 @@
+# Resumability & Handoff Guide
+
+The single doc to read when **picking this project back up** — whether you're a returning
+developer, a new contributor, or an AI agent resuming work. It captures the current state, how
+to rebuild the working environment, where runtime state lives, and the open threads to
+continue. Pair it with the [regeneration kit](regeneration-kit.md) (rebuild the *code*) and the
+[ADRs](adr/README.md) (why things are the way they are).
+
+> **Keep this current.** Update the "Current state" and "Open threads" sections whenever you
+> finish a meaningful chunk of work, so the next person resumes from truth, not from memory.
+
+---
+
+## 1. One-paragraph orientation
+
+**ProctoredAI** is a Next.js 15 + Genkit/Gemini app that generates an exam from a topic,
+proctors the test-taker via periodic webcam-frame analysis, grades answers (MC + free-text),
+and offers a voice-enabled AI tutor on the results page. There is **no backend database** —
+state lives in the browser session. The app was cloned from
+[abhinavrbharadwaj7/AI_test_propter](https://github.com/abhinavrbharadwaj7/AI_test_propter)
+and documented under `docs/`. Start with [../README.md](../README.md) →
+[system_design.md](system_design.md) for the mental model.
+
+## 2. Current state (as of 2026-06-01)
+
+- **Code:** Functional app, unchanged from upstream. No tests, no CI.
+- **Docs:** Full suite added — README (with source credit), SETUP, requirements, `.env.example`, and `docs/` (PRD, product & system design, user manual, testing, UAT, tech debt, ADRs, this file, regeneration kit).
+- **Published:** `main` is on GitHub at **https://github.com/mahadevaiahrashmi/ProctoredAI** (public).
+- **Remotes:** `origin` → `mahadevaiahrashmi/ProctoredAI` (SSH); `upstream` → the original `abhinavrbharadwaj7/AI_test_propter`.
+- **Not done yet:** the highest-value open items are CI + tests and the privacy/consent work for proctoring (see §6).
+
+## 3. Rebuild the environment from scratch
+
+```bash
+git clone git@github.com:mahadevaiahrashmi/ProctoredAI.git
+cd ProctoredAI
+npm install
+cp .env.example .env        # add GEMINI_API_KEY (https://aistudio.google.com/app/apikey)
+npm run dev                 # http://localhost:9002
+# optional: npm run genkit:dev   # Genkit flow inspector
+```
+
+- **Node 20**, npm 9+. The only required secret is `GEMINI_API_KEY` (or `GOOGLE_API_KEY`).
+- Full prerequisites/troubleshooting: [../SETUP.md](../SETUP.md).
+- To recreate the *code* (not just the environment), see [regeneration-kit.md](regeneration-kit.md).
+
+## 4. Where runtime state lives (and why nothing "resumes" today)
+
+This is the crux of the app's (lack of) resumability. State is held in **`sessionStorage`**,
+scoped to the tab and lost on refresh/new tab (see [ADR-0003](adr/0003-client-session-state-no-db.md)):
+
+| Key | Written by | Read by | Shape |
+| --- | --- | --- | --- |
+| `examData` | `app/page.tsx` after generation | `app/exam/page.tsx` | `{ title, questions[] }` |
+| `examResults` | `app/exam/page.tsx` on submit | `app/results/page.tsx` | `{ questions, answers, violations[], title }` |
+
+Implications when resuming a *session*:
+- Refreshing `/exam` reloads `examData` from session **but resets answers, the timer, and the violation log** (those live only in React state). Opening `/exam` with no session falls back to the static sample exam in `src/lib/data.ts`.
+- `/results` cannot be reconstructed without `examResults` in the same tab.
+
+**To make exams truly resumable** (the feature option, tracked as **TD-004**): persist answers +
+remaining time + violations (e.g. to `localStorage` keyed by an exam/session id, or to a
+backend), and rehydrate React state on mount. That change would supersede
+[ADR-0003](adr/0003-client-session-state-no-db.md) with a new ADR.
+
+## 5. Mental model / entry points
+
+```
+src/app/page.tsx        → setup wizard (generate exam, gate on camera/mic)
+src/app/exam/page.tsx   → exam runner + proctoring loop
+src/app/results/page.tsx→ grading report + AI tutor
+src/app/actions.ts      → Server Actions (the seam between UI and AI)
+src/ai/flows/*          → the 7 Genkit/Gemini flows (the AI behavior)
+src/ai/genkit.ts        → model config (default gemini-2.5-flash)
+src/lib/data.ts         → fallback sample exam
+```
+
+Read order for a newcomer: [README](../README.md) → [system_design.md](system_design.md) →
+`src/app/actions.ts` → the relevant flow in `src/ai/flows/`.
+
+## 6. Open threads / what to do next
+
+Prioritized from [tech_debt.md](tech_debt.md) (IDs are stable references):
+
+1. **Add tests + CI** — TD-002, and gate `typecheck`/`lint` because the build ignores them (TD-001, [ADR-0007](adr/0007-suppress-build-type-lint-errors.md)). See [testing.md](testing.md) for the plan.
+2. **Privacy/consent for proctoring** — TD-003: webcam frames go to Gemini every ~1.5s with no consent record. Highest-risk gap before any real use.
+3. **Fix proctoring hygiene** — stop camera streams on unmount (TD-005); de-duplicate the violation log (TD-006).
+4. **Decide on persistence/resumability** — TD-004 (see §4). Product call: is history/resume in scope?
+5. **Cleanup** — remove unused `firebase` (TD-013), dead `submitted/page.tsx` (TD-014), unused `definePrompt` in the tutor flow (TD-009), `patch-package` (TD-016).
+
+## 7. Resuming as an AI agent — checklist
+
+1. `git -C <repo> status` and `git log --oneline -5` to see uncommitted work and recent history.
+2. Read this file, then [tech_debt.md](tech_debt.md) and [adr/README.md](adr/README.md) for state + rationale.
+3. Confirm the working directory: this project lives in its **own** git repo (`AI_test_propter/`). The parent folder is a *separate* repo — always scope git commands to the project with `git -C <path>` to avoid committing in the wrong place.
+4. For AI-behavior changes, edit the relevant `src/ai/flows/*` (each is the source of truth for its prompt) — note the tutor flow builds its prompt inline (TD-009).
+5. Before claiming a change works: `npm run typecheck` (build won't catch type errors) and, for UI, run `npm run dev` and exercise the flow.
+6. Persist progress here (update §2 and §6) and via commits — don't rely on conversational memory.
+
+## 8. Quick facts
+
+| Thing | Value |
+| --- | --- |
+| Dev URL | http://localhost:9002 |
+| Default model | `googleai/gemini-2.5-flash` (TTS: `gemini-2.5-flash-preview-tts`) |
+| Required env | `GEMINI_API_KEY` (or `GOOGLE_API_KEY`) |
+| Questions per exam | 5 (hard-coded in `generateExamAction`; flow supports 1–10 — TD-011) |
+| Time limit | 90s × #questions |
+| Proctor cadence | every 1500 ms |
+| Deploy target | Firebase App Hosting (`apphosting.yaml`, maxInstances 1) |
