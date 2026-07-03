@@ -26,6 +26,7 @@ function ResultsContent() {
     violations: string[];
     title: string;
     proctored?: boolean;
+    consent?: { acceptedAt: string; noticeVersion: string } | null;
   } | null>(null);
   const [gradingReport, setGradingReport] = useState<GradeExamOutput | null>(null);
   const [violationSummary, setViolationSummary] = useState<string>("");
@@ -163,6 +164,13 @@ function ResultsContent() {
                         <VideoOff className="h-4 w-4" /> Unproctored session
                     </span>
                 </div>
+            )}
+            {isProctored && examResults?.consent && (
+                <p className="mt-3 text-xs text-muted-foreground">
+                    Webcam proctoring consent recorded on{" "}
+                    {new Date(examResults.consent.acceptedAt).toLocaleString()}{" "}
+                    (notice {examResults.consent.noticeVersion}).
+                </p>
             )}
             </CardHeader>
             <CardContent className="space-y-8 p-8">

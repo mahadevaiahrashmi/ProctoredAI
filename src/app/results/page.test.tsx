@@ -78,4 +78,18 @@ describe('ResultsPage proctoring labeling', () => {
     expect(await screen.findByText(/Exam Report for/i)).toBeInTheDocument();
     expect(screen.queryByText(/Unproctored session/i)).toBeNull();
   });
+
+  it('surfaces the proctoring consent record as an audit line', async () => {
+    seedResults({
+      proctored: true,
+      consent: { acceptedAt: '2026-06-02T10:00:00.000Z', noticeVersion: 'v1' },
+    });
+    render(<ResultsPage />);
+
+    expect(await screen.findByText(/Exam Report for/i)).toBeInTheDocument();
+    expect(
+      screen.getByText(/webcam proctoring consent recorded/i)
+    ).toBeInTheDocument();
+    expect(screen.getByText(/notice v1/i)).toBeInTheDocument();
+  });
 });

@@ -42,6 +42,12 @@ export default function ExamPage() {
   // Whether this session is proctored. Set on the setup page; defaults to true
   // for direct navigation. When false, the proctoring UI and camera are skipped.
   const [proctored, setProctored] = useState(true);
+  // Consent record from the setup page (proctored sessions only). Forwarded to
+  // the results page as an audit trail; null for unproctored/legacy sessions.
+  const [consent, setConsent] = useState<{
+    acceptedAt: string;
+    noticeVersion: string;
+  } | null>(null);
 
   useEffect(() => {
     try {
@@ -61,8 +67,9 @@ export default function ExamPage() {
     try {
       const configString = sessionStorage.getItem('examConfig');
       if (configString) {
-        const { proctored: isProctored } = JSON.parse(configString);
-        setProctored(isProctored !== false);
+        const parsedConfig = JSON.parse(configString);
+        setProctored(parsedConfig.proctored !== false);
+        setConsent(parsedConfig.consent ?? null);
       }
     } catch (error) {
       console.error("Failed to parse exam config from sessionStorage", error);
@@ -106,6 +113,7 @@ export default function ExamPage() {
       violations: violations, // Pass violations to the results page
       title: examData.title,
       proctored: proctored, // Whether proctoring was active this session
+      consent: proctored ? consent : null, // Consent audit record (proctored only)
     }));
     router.push(`/results`);
   };

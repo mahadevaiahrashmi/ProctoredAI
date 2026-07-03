@@ -14,6 +14,7 @@ import {
   User,
   VideoOff,
   ShieldAlert,
+  Lock,
 } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
@@ -30,8 +31,13 @@ import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { generateExamAction, getProviderCapabilitiesAction } from "./actions";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Checkbox } from "@/components/ui/checkbox";
 
 type PermissionState = "prompt" | "granted" | "denied";
+
+// Bump when the proctoring privacy notice text materially changes, so a recorded
+// consent can be traced to the exact notice version the user agreed to.
+const PROCTORING_NOTICE_VERSION = "v1";
 
 export default function ExamInitiationPage() {
   const router = useRouter();
@@ -47,6 +53,7 @@ export default function ExamInitiationPage() {
     useState<PermissionState>("prompt");
   const [micPermission, setMicPermission] =
     useState<PermissionState>("prompt");
+  const [proctoringConsent, setProctoringConsent] = useState(false);
 
   // Whether the active AI provider can analyze webcam frames. When false (e.g.
   // a text-only Ollama model), proctoring is impossible and only the
@@ -59,10 +66,21 @@ export default function ExamInitiationPage() {
       .catch(() => setVisionSupported(true)); // assume capable if the check fails
   }, []);
 
-  // Record whether this session is proctored, then proceed to the exam.
+  // Record whether this session is proctored, then proceed to the exam. For a
+  // proctored session we also persist a consent record (when the user agreed and
+  // which notice version they saw) so it can be surfaced as an audit trail.
   const startExam = useCallback(
     (proctored: boolean) => {
-      sessionStorage.setItem("examConfig", JSON.stringify({ proctored }));
+      const config = proctored
+        ? {
+            proctored: true,
+            consent: {
+              acceptedAt: new Date().toISOString(),
+              noticeVersion: PROCTORING_NOTICE_VERSION,
+            },
+          }
+        : { proctored: false };
+      sessionStorage.setItem("examConfig", JSON.stringify(config));
       router.push("/exam");
     },
     [router]
@@ -244,6 +262,40 @@ export default function ExamInitiationPage() {
                     </AlertDescription>
                   </Alert>
                 ) : null}
+
+                <div className="space-y-3">
+                  <div className="space-y-2 rounded-md border bg-muted/40 p-4 text-sm text-muted-foreground">
+                    <div className="flex items-center gap-2 font-medium text-foreground">
+                      <Lock className="h-4 w-4" /> Privacy notice
+                    </div>
+                    <p>
+                      During a proctored exam your webcam is sampled about every
+                      1.5&nbsp;seconds, and each snapshot is sent to the
+                      configured AI provider for automated proctoring analysis.
+                      ProctoredAI does not store these snapshots &mdash; there is
+                      no server-side database &mdash; and they are used only to
+                      flag possible violations, processed under the
+                      provider&apos;s own privacy policy. You can decline and take
+                      the exam unproctored instead.
+                    </p>
+                  </div>
+                  <div className="flex items-start gap-3 rounded-md border p-3">
+                    <Checkbox
+                      id="proctoring-consent"
+                      checked={proctoringConsent}
+                      onCheckedChange={(v) => setProctoringConsent(v === true)}
+                      className="mt-0.5"
+                    />
+                    <Label
+                      htmlFor="proctoring-consent"
+                      className="cursor-pointer text-sm font-normal leading-snug"
+                    >
+                      I consent to webcam monitoring for this exam, including
+                      sending periodic snapshots to the AI provider for
+                      proctoring.
+                    </Label>
+                  </div>
+                </div>
               </div>
             )}
           </CardContent>
@@ -297,11 +349,13 @@ export default function ExamInitiationPage() {
                   size="lg"
                   className="w-full"
                   onClick={() => startExam(true)}
-                  disabled={!allPermissionsGranted}
+                  disabled={!allPermissionsGranted || !proctoringConsent}
                 >
-                  {allPermissionsGranted
-                    ? "Start Proctored Exam"
-                    : "Waiting for Permissions..."}
+                  {!allPermissionsGranted
+                    ? "Waiting for Permissions..."
+                    : !proctoringConsent
+                      ? "Consent Required to Proctor"
+                      : "Start Proctored Exam"}
                 </Button>
                 <Button
                   size="lg"
