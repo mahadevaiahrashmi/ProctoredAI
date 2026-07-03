@@ -24,6 +24,12 @@ import {genkit, z, type ModelReference} from 'genkit';
 import {googleAI} from '@genkit-ai/google-genai';
 import {ollama} from 'genkitx-ollama';
 import {compatOaiModelRef, openAICompatible} from '@genkit-ai/compat-oai';
+import {
+  DEFAULT_MAX_INPUT_USD_PER_MTOK,
+  fetchOpenRouterCatalog,
+  firstAvailableModel,
+  rankOpenRouterModels,
+} from './openrouter-models';
 
 export type AiProvider = 'googleai' | 'ollama' | 'openrouter';
 
@@ -62,25 +68,70 @@ switch (aiProvider) {
     break;
   }
   case 'openrouter': {
-    const textModel =
-      readEnv('OPENROUTER_MODEL') ??
-      'meta-llama/llama-3.2-11b-vision-instruct:free';
+    const explicitModel = readEnv('OPENROUTER_MODEL');
+    const openrouterKey = readEnv('OPENROUTER_API_KEY');
+    // `next build` collects page data by importing this module — never make a
+    // network call during the build (no key/network in CI). Auto-selection is a
+    // runtime concern only.
+    const isBuildPhase = process.env.NEXT_PHASE === 'phase-production-build';
+
+    // Fallback default if auto-selection is skipped or fails. OpenRouter's free
+    // catalog shifts, so this is only a safety net; normal operation picks a
+    // live model below.
+    let modelId: string = explicitModel ?? 'nvidia/nemotron-nano-12b-v2-vl:free';
+    let modelVision = true; // assume capable unless auto-selection tells us
+
+    if (!explicitModel && openrouterKey && !isBuildPhase) {
+      // Auto-select: free first, then cheapest → most expensive under the price
+      // cap, using the cheapest option that is actually available right now (so
+      // a rate-limited/retired free model is skipped for the next cheapest one).
+      try {
+        const cap =
+          Number(readEnv('OPENROUTER_MAX_INPUT_USD_PER_MTOK')) ||
+          DEFAULT_MAX_INPUT_USD_PER_MTOK;
+        const catalog = await fetchOpenRouterCatalog(openrouterKey);
+        const ranked = rankOpenRouterModels(catalog, cap);
+        const picked = await firstAvailableModel(ranked, openrouterKey);
+        if (picked) {
+          modelId = picked.id;
+          modelVision = picked.vision;
+          console.log(
+            `[openrouter] auto-selected ${picked.id} ` +
+              `($${picked.inputUsdPerMTok.toFixed(3)}/1M input tokens; ` +
+              `${ranked.length} models <= $${cap}/1M, free first). ` +
+              `Set OPENROUTER_MODEL to pin a specific model.`
+          );
+        } else {
+          console.warn(
+            '[openrouter] no ranked model responded; using default ' + modelId
+          );
+        }
+      } catch (err) {
+        console.warn(
+          '[openrouter] model auto-selection failed; using default ' + modelId,
+          err
+        );
+      }
+    }
+
     aiInstance = genkit({
       plugins: [
         openAICompatible({
           name: 'openrouter',
           baseURL: 'https://openrouter.ai/api/v1',
-          apiKey: readEnv('OPENROUTER_API_KEY') ?? false,
+          apiKey: openrouterKey ?? false,
         }),
       ],
-      model: compatOaiModelRef({name: textModel, namespace: 'openrouter'}),
+      model: compatOaiModelRef({name: modelId, namespace: 'openrouter'}),
     });
     resolvedVisionModel = compatOaiModelRef({
-      name: textModel,
+      name: modelId,
       namespace: 'openrouter',
     });
     ttsSupported = false;
-    visionSupported = true; // depends on the chosen model
+    // A pinned model's modalities are unknown here, so assume vision-capable; an
+    // auto-selected model's capability is known from the catalogue.
+    visionSupported = explicitModel ? true : modelVision;
     break;
   }
   case 'googleai':
