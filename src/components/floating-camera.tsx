@@ -9,10 +9,18 @@ export default function FloatingCamera() {
   const [hasCameraPermission, setHasCameraPermission] = useState(true);
 
   useEffect(() => {
+    let stream: MediaStream | null = null;
+    let cancelled = false;
+
     async function setupCamera() {
       try {
         if (navigator.mediaDevices && navigator.mediaDevices.getUserMedia) {
-          const stream = await navigator.mediaDevices.getUserMedia({ video: true });
+          stream = await navigator.mediaDevices.getUserMedia({ video: true });
+          // Unmounted before the camera was ready — release it immediately.
+          if (cancelled) {
+            stream.getTracks().forEach((track) => track.stop());
+            return;
+          }
           if (videoRef.current) {
             videoRef.current.srcObject = stream;
           }
@@ -27,6 +35,13 @@ export default function FloatingCamera() {
     }
 
     setupCamera();
+
+    return () => {
+      cancelled = true;
+      if (stream) {
+        stream.getTracks().forEach((track) => track.stop());
+      }
+    };
   }, []);
 
   if (!hasCameraPermission) {

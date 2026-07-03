@@ -23,6 +23,28 @@ type ProctoringStatus = "secure" | "violation" | "initializing";
 
 const VIOLATION_CHECK_INTERVAL_MS = 1500; // Check for violations every 1.5 seconds
 
+// Suppress repeat log entries for the same violation within this window so a
+// persistent condition (e.g. a phone in frame) doesn't flood the log each tick.
+const VIOLATION_LOG_COOLDOWN_MS = 30000;
+
+// Returns the violation messages not seen within the cooldown window, recording
+// each returned message's time in `lastLoggedAt` (mutated in place) so the next
+// tick can suppress it. This is what keeps a persistent condition to one entry.
+export function selectFreshViolations(
+  messages: string[],
+  lastLoggedAt: Record<string, number>,
+  now: number,
+  cooldownMs: number = VIOLATION_LOG_COOLDOWN_MS,
+): string[] {
+  const fresh = messages.filter(
+    (m) => !(m in lastLoggedAt) || now - lastLoggedAt[m] >= cooldownMs,
+  );
+  for (const m of fresh) {
+    lastLoggedAt[m] = now;
+  }
+  return fresh;
+}
+
 interface ProctoringPanelProps {
     violations: string[];
     setViolations: React.Dispatch<React.SetStateAction<string[]>>;
@@ -34,6 +56,7 @@ export default function ProctoringPanel({ violations, setViolations }: Proctorin
   const [status, setStatus] = useState<ProctoringStatus>("initializing");
   const [isProcessing, setIsProcessing] = useState(false);
   const intervalIdRef = useRef<NodeJS.Timeout | null>(null);
+  const lastLoggedAtRef = useRef<Record<string, number>>({});
 
   const captureFrameAndCheckViolation = useCallback(async () => {
     if (!videoRef.current || !canvasRef.current || isProcessing) return;
@@ -53,11 +76,18 @@ export default function ProctoringPanel({ violations, setViolations }: Proctorin
       try {
         const newViolations = await detectViolationsAction(imageDataUri);
         if (newViolations && newViolations.length > 0) {
-          const timestamp = new Date().toLocaleTimeString();
-          setViolations((prev) => [
-            ...prev,
-            ...newViolations.map((v) => `${timestamp}: ${v}`),
-          ]);
+          const fresh = selectFreshViolations(
+            newViolations,
+            lastLoggedAtRef.current,
+            Date.now(),
+          );
+          if (fresh.length > 0) {
+            const timestamp = new Date().toLocaleTimeString();
+            setViolations((prev) => [
+              ...prev,
+              ...fresh.map((v) => `${timestamp}: ${v}`),
+            ]);
+          }
           setStatus("violation");
         }
       } catch (error) {
@@ -72,12 +102,20 @@ export default function ProctoringPanel({ violations, setViolations }: Proctorin
 
 
   useEffect(() => {
+    let stream: MediaStream | null = null;
+    let cancelled = false;
+
     async function setupCamera() {
       try {
-        const stream = await navigator.mediaDevices.getUserMedia({
+        stream = await navigator.mediaDevices.getUserMedia({
           video: true,
           audio: false, // Audio processed separately if needed
         });
+        // Unmounted before the camera was ready — release it immediately.
+        if (cancelled) {
+          stream.getTracks().forEach((track) => track.stop());
+          return;
+        }
         if (videoRef.current) {
           videoRef.current.srcObject = stream;
         }
@@ -90,6 +128,13 @@ export default function ProctoringPanel({ violations, setViolations }: Proctorin
     }
 
     setupCamera();
+
+    return () => {
+      cancelled = true;
+      if (stream) {
+        stream.getTracks().forEach((track) => track.stop());
+      }
+    };
   }, [setViolations]);
 
   useEffect(() => {
