@@ -1,11 +1,13 @@
 # Testing Strategy — ProctoredAI
 
-> **Current state:** **Vitest + React Testing Library are set up** with an initial
-> unit/component suite (`src/**/*.test.{ts,tsx}`), run in CI via `npm test` alongside
-> `typecheck` + `lint` (`.github/workflows/ci.yml`); the build also enforces type/lint
-> ([ADR-0008](adr/0008-enforce-type-lint-ci.md)). **Still to add:** broader integration
-> coverage and the **E2E (Playwright)** layer. This document defines the full target strategy —
-> the test pyramid, conventions, and what to mock. Items marked _(to add)_ do not exist yet.
+> **Current state:** **Vitest + RTL and Playwright are both set up.** The Vitest
+> unit/integration suite (`src/**/*.test.{ts,tsx}`, 12 files / 40 tests) and a Playwright
+> E2E smoke spec (`e2e/`) run in CI alongside `typecheck`, `lint`, and a production `build`
+> (`.github/workflows/ci.yml`); the build also enforces type/lint
+> ([ADR-0008](adr/0008-enforce-type-lint-ci.md)). **Still to grow:** the remaining
+> page-integration flows (§2.2) and the full E2E scenarios E2E-1…E2E-4 (§2.3). This document
+> defines the full target strategy — the test pyramid, conventions, and what to mock. Items
+> marked _(to add)_ do not exist yet.
 
 ---
 
@@ -41,16 +43,26 @@ Target the pure, synchronous logic and the flow contracts:
 - **Question rendering logic:** `question-display` selects radio vs textarea by `type`; selected-option highlighting.
 - **Zod schemas:** valid/invalid `Question`, `GradeExamInput`, etc. reject bad shapes.
 
-### 2.2 Integration tests _(to add)_ — moderate
-Render components/pages with **React Testing Library** and **mocked Server Actions**:
+### 2.2 Integration tests _(partially implemented)_ — moderate
+Render components/pages with **React Testing Library** and **mocked Server Actions**.
+**Done so far:** the setup wizard's consent gating (`page.test.tsx`), the results
+proctoring/consent labeling (`results/page.test.tsx`), and the proctoring-panel +
+floating-camera camera lifecycle (`*.test.tsx`). **Still to add** (targets below): the
+exam runner and chat tutor flows.
 - **Setup wizard (`page.tsx`):** submit disabled until name+topic; mocked `generateExamAction` advances steps and writes `sessionStorage.examData`; denied permissions block "Start Exam" and show the destructive alert.
 - **Exam runner (`exam/page.tsx`):** loads exam from session; Prev disabled on Q1; Submit appears on last question; confirm dialog → writes `examResults` and routes to `/results`; timer expiry auto-submits.
 - **Proctoring panel:** with a mocked `detectViolationsAction` returning violations, the log appends a timestamped entry and status flips to "Potential Violation Detected"; a thrown action does **not** crash the loop.
 - **Results (`results/page.tsx`):** mocked `gradeExamAction`/`summarizeAlertsAction` render score, summary, accordion; violation card only renders when violations exist; grading error shows the error card.
 - **Chat tutor:** sending a message calls `clarifyDoubtAction`, appends the reply, and calls `textToSpeechAction`; a thrown action renders the inline "Sorry, I ran into a problem" bubble.
 
-### 2.3 End-to-end tests _(to add)_ — fewest, highest value
-Run the real app with **Playwright**, stubbing network calls to Gemini (or pointing actions at a fake) and **granting fake media** via `context.grantPermissions(['camera','microphone'])` + a fake video device:
+### 2.3 End-to-end tests _(scaffolded)_ — fewest, highest value
+**Set up:** `playwright.config.ts` (auto-starts the dev server on `:9002`, Chromium,
+fake camera/mic via `--use-fake-*-for-media-stream` + `permissions: ['camera','microphone']`)
+plus a runnable smoke spec (`e2e/smoke.spec.ts`) that loads the setup wizard with **no AI
+call**; run via `npm run test:e2e`, enforced by the CI `e2e` job. The scenarios below still
+need implementing on this scaffold — stub network calls to Gemini (or point actions at a fake)
+and rely on the config's fake media (`context.grantPermissions(['camera','microphone'])` is
+also available per-context):
 - **E2E-1 (happy path):** setup → instructions → permissions → answer all 5 → submit → results render → ask the tutor → reply appears.
 - **E2E-2 (time-up):** let the timer expire → auto-submit → results.
 - **E2E-3 (permission denied):** deny camera → "Start Exam" stays disabled, alert shown.
@@ -68,8 +80,9 @@ Run the real app with **Playwright**, stubbing network calls to Gemini (or point
 | Coverage | Vitest `--coverage` (v8) | Track and gate coverage. |
 
 > **Installed:** Vitest, `@vitejs/plugin-react`, jsdom, and `@testing-library/react` /
-> `user-event` / `jest-dom`, wired via `vitest.config.ts` + `src/test/setup.ts` with a `test`
-> script (`vitest run`). **Not yet:** Playwright (`test:e2e`) and coverage gating.
+> `user-event` / `jest-dom` (wired via `vitest.config.ts` + `src/test/setup.ts`, `test` =
+> `vitest run`), plus **Playwright** (`@playwright/test`, `playwright.config.ts`, `test:e2e` =
+> `playwright test`). **Not yet:** coverage gating.
 
 ---
 
@@ -92,42 +105,43 @@ Run the real app with **Playwright**, stubbing network calls to Gemini (or point
 
 ## 6. Continuous integration
 
-CI **exists today** at `.github/workflows/ci.yml`: on every push/PR to `main` it runs
-`npm ci` → `npm run typecheck` → `npm run lint` → `npm test` (Vitest, Node 20) — see
-[ADR-0008](adr/0008-enforce-type-lint-ci.md). It does **not** yet run `build` or E2E.
-The recommended **target** pipeline that adds those remaining steps:
+CI **exists today** at `.github/workflows/ci.yml`: on every push/PR to `main`, the
+`quality` job runs `npm ci` → `npm run typecheck` → `npm run lint` → `npm test` (Vitest)
+→ `npm run build`, and a dependent `e2e` job runs `npx playwright install --with-deps chromium`
+→ `npm run test:e2e` (both Node 20) — see [ADR-0008](adr/0008-enforce-type-lint-ci.md). The
+pipeline now in force:
 
 ```yaml
 name: CI
 on:
   push: { branches: [main] }
-  pull_request:
+  pull_request: { branches: [main] }
 jobs:
-  verify:
+  quality:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
         with: { node-version: 20, cache: npm }
       - run: npm ci
-      - run: npm run lint        # also enforced by the build
       - run: npm run typecheck    # also enforced by the build
-      - run: npm test            # unit + component (Vitest)
+      - run: npm run lint         # also enforced by the build
+      - run: npm test             # unit + component (Vitest)
       - run: npm run build
   e2e:
     runs-on: ubuntu-latest
-    needs: verify
+    needs: quality
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
         with: { node-version: 20, cache: npm }
       - run: npm ci
-      - run: npx playwright install --with-deps
+      - run: npx playwright install --with-deps chromium
       - run: npm run test:e2e
 ```
 
-**CI gates (must pass to merge):** `lint`, `typecheck`, and `npm test` (all live today), then —
-once added — `build` and E2E. Type/lint safety is enforced in **two** places: the build fails
+**CI gates (must pass to merge):** `typecheck`, `lint`, `npm test`, `build`, and the E2E
+job — all live today. Type/lint safety is enforced in **two** places: the build fails
 on errors (`ignoreBuildErrors`/`ignoreDuringBuilds` are `false`) **and** CI re-checks them, so a
 regression can't slip through either gate.
 

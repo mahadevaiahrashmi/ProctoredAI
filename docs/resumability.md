@@ -25,12 +25,12 @@ and documented under `docs/`. Start with [../README.md](../README.md) →
 
 ## 2. Current state (as of 2026-06-02)
 
-- **Code:** Functional app. A type/lint/CI hardening pass fixed a handful of type/lint errors, configured ESLint, added CI, and made the build enforce both ([ADR-0008](adr/0008-enforce-type-lint-ci.md)). **An automated test runner is now set up** — Vitest + React Testing Library with an initial unit/component suite, run in CI via `npm test` (TD-002); broader integration + E2E coverage is the remaining gap.
+- **Code:** Functional app. A type/lint/CI hardening pass fixed a handful of type/lint errors, configured ESLint, added CI, and made the build enforce both ([ADR-0008](adr/0008-enforce-type-lint-ci.md)). **Automated testing is set up at two levels** — Vitest + RTL (12 files / 40 tests, incl. page-level integration) and a **Playwright E2E** smoke spec (`e2e/`) — both run in CI alongside `typecheck`, `lint`, and `build` (TD-002). The remaining gap is the full E2E scenarios and a couple of page flows.
 - **Pluggable AI + opt-outs:** The AI provider is now selectable via `AI_PROVIDER` (Gemini default; Ollama keyless/local; OpenRouter free models), proctoring is **optional** (camera opt-out → unproctored, clearly labelled), and the tutor's spoken replies can be **muted** (text-only fallback where TTS is unavailable). Genkit was upgraded 1.14→1.36. See [ADR-0009](adr/0009-pluggable-ai-providers-and-camera-opt-out.md); caveats in TD-020 (Ollama structured output) and TD-019 (npm audit backlog).
 - **Docs:** Full suite added — README (with source credit), SETUP, requirements, `.env.example`, and `docs/` (PRD, product & system design, user manual, testing, UAT, tech debt, ADRs, this file, regeneration kit).
 - **Published:** `main` is on GitHub at **https://github.com/mahadevaiahrashmi/ProctoredAI** (public).
 - **Remotes:** `origin` → `mahadevaiahrashmi/ProctoredAI` (SSH); `upstream` → the original `abhinavrbharadwaj7/AI_test_propter`.
-- **Not done yet:** the highest-value open items are broader test coverage — page-level integration + E2E (the Vitest + RTL runner and an initial suite exist and run in CI; TD-002) — and the privacy/consent work for proctoring (see §6).
+- **Not done yet:** with the proctoring hygiene (TD-005/006), cleanup (TD-009/013/016), and proctored-path consent (TD-003) now landed, the highest-value open items are **persistence/resumability** (TD-004) and finishing the **E2E scenarios + remaining page-integration flows** (TD-002). See §6.
 
 ## 3. Rebuild the environment from scratch
 
@@ -56,7 +56,8 @@ scoped to the tab and lost on refresh/new tab (see [ADR-0003](adr/0003-client-se
 | Key | Written by | Read by | Shape |
 | --- | --- | --- | --- |
 | `examData` | `app/page.tsx` after generation | `app/exam/page.tsx` | `{ title, questions[] }` |
-| `examResults` | `app/exam/page.tsx` on submit | `app/results/page.tsx` | `{ questions, answers, violations[], title }` |
+| `examConfig` | `app/page.tsx` on start | `app/exam/page.tsx` | `{ proctored, consent? }` |
+| `examResults` | `app/exam/page.tsx` on submit | `app/results/page.tsx` | `{ questions, answers, violations[], title, proctored, consent }` |
 
 Implications when resuming a *session*:
 - Refreshing `/exam` reloads `examData` from session **but resets answers, the timer, and the violation log** (those live only in React state). Opening `/exam` with no session falls back to the static sample exam in `src/lib/data.ts`.
@@ -86,19 +87,20 @@ Read order for a newcomer: [README](../README.md) → [system_design.md](system_
 
 Prioritized from [tech_debt.md](tech_debt.md) (IDs are stable references):
 
-1. **Grow the test suite** — TD-002. The Vitest + RTL runner and an initial unit/component suite now run in CI alongside `typecheck`/`lint`, with the build enforcing both ([ADR-0008](adr/0008-enforce-type-lint-ci.md)); what's missing is page-level integration coverage and the Playwright E2E layer. See [testing.md](testing.md) §2.2–2.3 for the plan.
-2. **Privacy/consent for proctoring** — TD-003: when a user *does* proctor, webcam frames go to the AI provider every ~1.5s with no consent record/retention policy. Partly mitigated now that the camera is optional ([ADR-0009](adr/0009-pluggable-ai-providers-and-camera-opt-out.md)), but the explicit consent step + retention notice for the proctored path is still the highest-risk gap before any real use.
-3. **Fix proctoring hygiene** — stop camera streams on unmount (TD-005); de-duplicate the violation log (TD-006).
-4. **Decide on persistence/resumability** — TD-004 (see §4). Product call: is history/resume in scope?
-5. **Cleanup** — remove unused `firebase` (TD-013), unused `definePrompt` in the tutor flow (TD-009), `patch-package` (TD-016). (The dead `submitted/page.tsx` was already removed — TD-014.)
+1. **Decide on persistence/resumability** — TD-004 (see §4). Now the top open thread: exam + results live only in `sessionStorage`, so refresh/new-tab loses everything and there's no history or audit trail. Product call: is history/resume in scope?
+2. **Finish the test pyramid** — TD-002. Page-level integration (setup wizard, results) and a Playwright E2E scaffold + smoke spec now run in CI; what's left is the full E2E scenarios (E2E-1…E2E-4) and the exam-runner + chat-tutor integration tests. See [testing.md](testing.md) §2.2–2.3.
+3. **Harden security/cost** — no auth or rate limiting on the AI Server Actions (TD-007); MC questions are graded by the LLM rather than exact-compared (TD-010); npm audit backlog incl. 1 critical (TD-019).
+4. **Optional proctoring-privacy hardening** — TD-003 is largely resolved (explicit consent + versioned notice + a recorded audit line); the residual is making the ~1.5s cadence configurable and adding on-device pre-filtering.
+
+> **Recently landed (2026-06-02):** proctoring hygiene — camera streams stopped on unmount (TD-005) and the violation log de-duplicated (TD-006); cleanup — removed `firebase` (TD-013), `patch-package` (TD-016), and the dead tutor `definePrompt` (TD-009); and the proctored-path **consent step + privacy notice + recorded consent** (TD-003).
 
 ## 7. Resuming as an AI agent — checklist
 
 1. `git -C <repo> status` and `git log --oneline -5` to see uncommitted work and recent history.
 2. Read this file, then [tech_debt.md](tech_debt.md) and [adr/README.md](adr/README.md) for state + rationale.
 3. Confirm the working directory: this project lives in its **own** git repo (`AI_test_propter/`). The parent folder is a *separate* repo — always scope git commands to the project with `git -C <path>` to avoid committing in the wrong place.
-4. For AI-behavior changes, edit the relevant `src/ai/flows/*` (each is the source of truth for its prompt) — note the tutor flow builds its prompt inline (TD-009).
-5. Before claiming a change works: `npm run typecheck`, `npm run lint`, and `npm test` (the build now enforces type/lint, but run them directly for fast feedback) and, for UI, run `npm run dev` and exercise the flow.
+4. For AI-behavior changes, edit the relevant `src/ai/flows/*` (each is the source of truth for its prompt) — note the tutor flow builds its prompt inline (an `ai.generate` call with a `customPrompt` string).
+5. Before claiming a change works: `npm run typecheck`, `npm run lint`, `npm test`, and (the build/E2E gates) `npm run build` / `npm run test:e2e` — the first `test:e2e` run needs `npx playwright install chromium`. For UI, run `npm run dev` and exercise the flow.
 6. Persist progress here (update §2 and §6) and via commits — don't rely on conversational memory.
 
 ## 8. Quick facts
@@ -106,7 +108,7 @@ Prioritized from [tech_debt.md](tech_debt.md) (IDs are stable references):
 | Thing | Value |
 | --- | --- |
 | Dev URL | http://localhost:9002 |
-| Tests | `npm test` — Vitest + RTL (unit/component); E2E not yet added |
+| Tests | `npm test` — Vitest + RTL (unit/integration); `npm run test:e2e` — Playwright E2E (smoke) |
 | AI provider | `AI_PROVIDER`: `googleai` (default) · `ollama` (keyless/local) · `openrouter` (free models) |
 | Default model | `googleai/gemini-2.5-flash` (TTS `gemini-2.5-flash-preview-tts` — Gemini only; tutor is text-only elsewhere) |
 | Required env | Gemini: `GEMINI_API_KEY`/`GOOGLE_API_KEY` · Ollama: none · OpenRouter: `OPENROUTER_API_KEY` |

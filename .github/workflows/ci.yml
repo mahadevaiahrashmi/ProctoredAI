@@ -1,8 +1,10 @@
 name: CI
 
 # Quality gates that mirror the build's enforcement (next.config.ts now fails on
-# type/lint errors — ADR-0008): typecheck, lint, and the Vitest unit/integration
-# suite, run on every push and pull request to main.
+# type/lint errors — ADR-0008): typecheck, lint, the Vitest unit/integration
+# suite, a production build, and a Playwright E2E pass, run on every push and
+# pull request to main. GEMINI_API_KEY is intentionally absent — the suites mock
+# the model and the E2E smoke path renders without an AI call.
 on:
   push:
     branches: [main]
@@ -11,7 +13,7 @@ on:
 
 jobs:
   quality:
-    name: Typecheck, Lint & Test
+    name: Typecheck, Lint, Test & Build
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
@@ -34,3 +36,29 @@ jobs:
 
       - name: Test
         run: npm test
+
+      - name: Build
+        run: npm run build
+
+  e2e:
+    name: E2E (Playwright)
+    needs: quality
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Install Playwright browsers
+        run: npx playwright install --with-deps chromium
+
+      - name: Run E2E tests
+        run: npm run test:e2e
